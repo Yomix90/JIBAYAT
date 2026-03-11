@@ -1,5 +1,56 @@
+# ─────────────────────────────────────────────
+#  GFC Maroc — .gitignore
+# ─────────────────────────────────────────────
+
+# ── Python ──────────────────────────────────
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+*.spec
+
+# ── Environnements virtuels ──────────────────
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# ── Base de données locale ───────────────────
 fiscalite.db
+fiscalite.db-shm
+fiscalite.db-wal
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Configuration locale (données sensibles) ─
 config.json
 last_update.txt
+
+# ── Distribution PyInstaller ─────────────────
+build/
+dist/
+*.rar
+*.zip
+*.7z
+
+# ── Logs ────────────────────────────────────
+*.log
+logs/
+
+# ── IDE & Éditeurs ───────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
+.DS_Store
+Thumbs.db
+
+# ── Variables d'environnement ────────────────
+.env
+.env.local
+.env.production
