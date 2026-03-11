@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+fiscalite.db
+config.json
+last_update.txt
