@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}Paramètres de Calcul{% endblock %}
+{% block page_title %}⚙️ Paramètres de Calcul{% endblock %}
+{% block content %}
+<div class="alert alert-warn">⚠️ Ces paramètres définissent les règles de calcul des pénalités, majorations, amendes et délais pour chaque module fiscal (Loi 47-06, Art. 134, 147). Toute modification affecte immédiatement les calculs futurs.</div>
+
+<!-- Simulateur -->
+<div class="card">
+  <div class="card-header"><h3>🧮 Simulateur de Pénalités</h3></div>
+  <div class="card-body">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px">
+      <div class="form-group"><label>Montant Principal (DH)</label><input type="number" id="simM" value="5000" oninput="sim()"></div>
+      <div class="form-group"><label>Date Échéance</label><input type="date" id="simE" oninput="sim()"></div>
+      <div class="form-group"><label>Date Paiement</label><input type="date" id="simP" oninput="sim()"></div>
+      <div class="form-group"><label>Module</label>
+        <select id="simMod" onchange="sim()">
+          <option value="TNB">TNB</option><option value="DEBITS_BOISSONS">Débits Boissons</option>
+          <option value="STATIONNEMENT">Stationnement</option><option value="FOURRIERE">Fourrière</option>
+          <option value="GLOBAL">Global</option>
+        </select>
+      </div>
+    </div>
+    <div id="simResult"></div>
+  </div>
+</div>
+
+<!-- Paramètres par module -->
+<form method="post" action="{{ url_for('modifier_parametres') }}">
+  {% for module, params in grouped.items() %}
+  <div class="card">
+    <div class="card-header">
+      <h3>
+        {% if module=='TNB' %}🏗️ TNB — Terrains Urbains Non Bâtis
+        {% elif module=='DEBITS_BOISSONS' %}🍺 Taxe Débits de Boissons
+        {% elif module=='STATIONNEMENT' %}🚗 Droit de Stationnement TPV
+        {% elif module=='TRANSPORT_VOYAGEURS' %}🚌 Transport Voyageurs
+        {% elif module=='FOURRIERE' %}🔑 Droits de Fourrière
+        {% elif module=='OCCUPATION_DOMAINE' %}🏪 Occupation Domaine Public
+        {% elif module=='LOCATION_LOCAUX' %}🏢 Location Locaux
+        {% elif module=='AFFERMAGE_SOUKS' %}🛒 Affermage Souks
+        {% elif module=='GLOBAL' %}⚙️ Paramètres Globaux
+        {% else %}📋 {{ module }}{% endif %}
+      </h3>
+      {% if module=='TNB' %}<span class="badge b-primary" style="font-size:.65rem">Art. 39-46 Loi 47-06 | Décl. avant 31/03</span>
+      {% elif module=='DEBITS_BOISSONS' %}<span class="badge b-info" style="font-size:.65rem">Décl. trimestrielle, 30 jours après fin trimestre</span>
+      {% elif module=='STATIONNEMENT' %}<span class="badge b-warn" style="font-size:.65rem">Paiement annuel — Janvier</span>{% endif %}
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+        {% for p in params %}
+        <div class="form-group">
+          <label title="{{ p.description }}">{{ p.libelle }}</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" name="p_{{ p.id }}" value="{{ p.valeur }}" step="0.01" style="flex:1">
+            <span style="font-size:.72rem;color:var(--muted);min-width:40px;font-weight:700">{{ p.unite }}</span>
+          </div>
+          <small style="font-size:.65rem;color:var(--muted)">{{ p.description }}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if user.peut_config %}
+  <div style="position:sticky;bottom:16px;z-index:10;text-align:right">
+    <button type="submit" class="btn btn-primary" style="box-shadow:0 4px 16px rgba(30,58,95,.3);padding:12px 24px">
+      💾 Enregistrer Tous les Paramètres
+    </button>
+  </div>
+  {% endif %}
+</form>
+
+<script>
+function sim(){
+  const m=parseFloat(document.getElementById('simM').value)||0;
+  const e=document.getElementById('simE').value;
+  const p=document.getElementById('simP').value;
+  const mod=document.getElementById('simMod').value;
+  if(!m||!e||!p){document.getElementById('simResult').innerHTML='';return;}
+  fetch(`/api/calcul?montant=${m}&echeance=${e}&paiement=${p}&module=${mod}&hors_delai=0`)
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('simResult').innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+        <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:.68rem;color:var(--muted)">Principal</div>
+          <div style="font-size:1.2rem;font-weight:800;color:var(--primary)">${m.toFixed(2)} DH</div>
+        </div>
+        <div style="background:#fff3cd;border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:.68rem;color:#856404">Pénalité 10%</div>
+          <div style="font-size:1.2rem;font-weight:800;color:var(--accent)">${d.penalite.toFixed(2)} DH</div>
+        </div>
+        <div style="background:#f8d7da;border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:.68rem;color:#721c24">Majoration</div>
+          <div style="font-size:1.2rem;font-weight:800;color:var(--danger)">${d.majoration.toFixed(2)} DH</div>
+        </div>
+        <div style="background:linear-gradient(135deg,var(--primary),var(--primary-l));border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:.68rem;color:rgba(255,255,255,.7)">TOTAL À PAYER</div>
+          <div style="font-size:1.3rem;font-weight:800;color:#fff">${d.total.toFixed(2)} DH</div>
+        </div>
+      </div>`;
+    });
+}
+// Init dates
+const now = new Date().toISOString().split('T')[0];
+document.getElementById('simP').value = now;
+const d3 = new Date(); d3.setMonth(d3.getMonth()-3);
+document.getElementById('simE').value = d3.toISOString().split('T')[0];
+sim();
+</script>
+{% endblock %}

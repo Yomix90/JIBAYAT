@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Avis de Non-Paiement{% endblock %}
+{% block page_title %}📨 Avis de Non-Paiement{% endblock %}
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:18px;align-items:start">
+  <div class="card">
+    <div class="card-header"><h3>📋 Générer Avis</h3></div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('generer_avis') }}">
+        <div class="form-group mb-3">
+          <label>Mode de Génération</label>
+          <div class="df gap-3 mt-2">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.85rem;font-weight:600">
+              <input type="radio" name="mode" value="individuel" checked onchange="toggleMode('individuel')"> Individuel
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.85rem;font-weight:600">
+              <input type="radio" name="mode" value="lot" onchange="toggleMode('lot')"> 📦 Lot (tous impayés)
+            </label>
+          </div>
+        </div>
+        <div id="modeInd">
+          <div class="form-group mb-3">
+            <label>Déclaration impayée *</label>
+            <select name="declaration_id">
+              <option value="">— Sélectionner —</option>
+              {% for d in decls %}
+              <option value="{{ d.id }}">{{ d.numero }} | {{ d.module }} | {{ d.nom }} {{ d.prenom or d.raison_sociale or '' }} | {{ "%.2f"|format(d.montant_total) }} DH</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div id="modeLot" style="display:none">
+          <div class="alert alert-warn">⚠️ Génération en lot: <strong>{{ decls|length }}</strong> déclaration(s) impayée(s). Un avis sera créé pour chacune avec un numéro de lot unique.</div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-danger" onclick="return confirm('Confirmer la génération?')">📨 Générer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3>Avis Émis ({{ items|length }})</h3>
+      <div class="df gap-2">
+        <span class="badge b-danger">En cours: {{ items|selectattr('statut','eq','emis')|list|length }}</span>
+        <span class="badge b-ok">Réglés: {{ items|selectattr('statut','eq','regle')|list|length }}</span>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table>
+        <thead><tr><th>N° Avis</th><th>Contribuable</th><th>Module</th><th>Montant Dû</th><th>Date Émission</th><th>Lot</th><th>Statut</th></tr></thead>
+        <tbody>
+          {% for a in items %}
+          <tr>
+            <td><strong style="color:var(--danger);font-size:.78rem">{{ a.numero_avis }}</strong></td>
+            <td style="font-size:.78rem"><strong>{{ a.nom }} {{ a.prenom or '' }}</strong><br><small class="text-muted">{{ a.adresse or '' }}</small></td>
+            <td><span class="badge b-info" style="font-size:.6rem">{{ a.module }}</span></td>
+            <td><strong style="color:var(--danger)">{{ "%.2f"|format(a.montant_du) }} DH</strong></td>
+            <td style="font-size:.78rem">{{ a.date_emission }}</td>
+            <td>{% if a.lot_id %}<span class="badge b-sec" style="font-size:.6rem" title="{{ a.lot_id }}">LOT</span>{% endif %}</td>
+            <td><span class="badge {% if a.statut=='emis' %}b-danger{% elif a.statut=='regle' %}b-ok{% else %}b-sec{% endif %}">{{ a.statut }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="empty-state"><span class="ei">📭</span>Aucun avis émis</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if items %}
+    <div style="padding:8px 14px;background:var(--bg);font-size:.75rem;color:var(--muted);border-top:1px solid var(--border)">
+      Total dû: <strong style="color:var(--danger)">{{ "%.2f"|format(items|sum(attribute='montant_du')) }} DH</strong>
+    </div>
+    {% endif %}
+  </div>
+</div>
+<script>
+function toggleMode(m){
+  document.getElementById('modeInd').style.display=m==='individuel'?'':'none';
+  document.getElementById('modeLot').style.display=m==='lot'?'':'none';
+}
+</script>
+{% endblock %}

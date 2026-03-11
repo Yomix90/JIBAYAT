@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Rubriques Fiscales{% endblock %}
+{% block page_title %}📋 Rubriques Fiscales{% endblock %}
+{% block content %}
+<div class="alert alert-info">ℹ️ Les rubriques fiscales correspondent aux 8 modules prévus par la Loi 47-06. Elles sont pré-configurées par défaut. Vous pouvez en ajouter de nouvelles spécifiques à votre commune.</div>
+<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:18px;align-items:start">
+  {% if user.peut_config %}
+  <div class="card">
+    <div class="card-header"><h3>➕ Ajouter Rubrique</h3></div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('ajouter_rubrique') }}">
+        <div class="form-group mb-3"><label>Code *</label><input name="code" required placeholder="ex: TNB-002"></div>
+        <div class="form-group mb-3"><label>Libellé Français *</label><input name="libelle" required></div>
+        <div class="form-group mb-3"><label>Libellé العربية</label><input name="libelle_ar" dir="rtl"></div>
+        <div class="form-group mb-3">
+          <label>Module *</label>
+          <select name="module" required>
+            <option value="TNB">TNB — Terrains Urbains Non Bâtis</option>
+            <option value="DEBITS_BOISSONS">Taxe Débits de Boissons</option>
+            <option value="TRANSPORT_VOYAGEURS">Transport Public Voyageurs</option>
+            <option value="STATIONNEMENT">Droit de Stationnement TPV</option>
+            <option value="OCCUPATION_DOMAINE">Occupation Domaine Public</option>
+            <option value="FOURRIERE">Droits de Fourrière</option>
+            <option value="LOCATION_LOCAUX">Location Locaux Commerciaux</option>
+            <option value="AFFERMAGE_SOUKS">Affermage Souks Communaux</option>
+          </select>
+        </div>
+        <div class="form-group mb-3"><label>Description</label><textarea name="description" rows="2"></textarea></div>
+        <div class="form-actions"><button type="submit" class="btn btn-primary">💾 Ajouter</button></div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+  <div class="card">
+    <div class="card-header"><h3>Rubriques Loi 47-06 ({{ items|length }})</h3></div>
+    <div class="table-responsive">
+      <table>
+        <thead><tr><th>Code</th><th>Libellé Français</th><th>بالعربية</th><th>Module</th><th>Commune</th>{% if user.peut_config %}<th>Actions</th>{% endif %}</tr></thead>
+        <tbody>
+          {% for r in items %}
+          <tr>
+            <td><strong style="color:var(--primary)">{{ r.code }}</strong></td>
+            <td><strong>{{ r.libelle }}</strong></td>
+            <td dir="rtl" style="text-align:right;font-size:.82rem">{{ r.libelle_ar or '—' }}</td>
+            <td><span class="badge b-primary" style="font-size:.62rem">{{ r.module }}</span></td>
+            <td style="font-size:.78rem">{{ r.commune_nom or 'Toutes' }}</td>
+            {% if user.peut_config %}<td>
+              {% if user.peut_supprimer %}
+              <form method="post" action="{{ url_for('supprimer_rubrique', id=r.id) }}" onsubmit="return confirm('Supprimer?')">
+                <button type="submit" class="btn btn-danger btn-xs">🗑️</button>
+              </form>
+              {% endif %}
+            </td>{% endif %}
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="empty-state">Aucune rubrique</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

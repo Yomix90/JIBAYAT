@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Tableau de Bord{% endblock %}
+{% block page_title %}📊 Tableau de Bord{% endblock %}
+{% block content %}
+<div class="stats-grid">
+  <div class="stat" style="border-left-color:#1e3a5f"><span class="si">👥</span><div><div class="sv">{{ stats.contribuables }}</div><div class="sl">Contribuables</div></div></div>
+  <div class="stat" style="border-left-color:#e8a020"><span class="si">🏗️</span><div><div class="sv">{{ stats.terrains }}</div><div class="sl">Terrains TNB</div></div></div>
+  <div class="stat" style="border-left-color:#e74c3c"><span class="si">⏳</span><div><div class="sv">{{ stats.bulletins_attente }}</div><div class="sl">Bulletins en attente</div></div></div>
+  <div class="stat" style="border-left-color:#e74c3c"><span class="si">📨</span><div><div class="sv">{{ stats.avis_emis }}</div><div class="sl">Avis non-paiement</div></div></div>
+  <div class="stat" style="border-left-color:#27ae60"><span class="si">💰</span><div><div class="sv" style="font-size:1rem">{{ "%.0f"|format(stats.total_emis) }} DH</div><div class="sl">Total émis</div></div></div>
+  <div class="stat" style="border-left-color:#27ae60"><span class="si">✅</span><div><div class="sv" style="font-size:1rem">{{ "%.0f"|format(stats.total_paye) }} DH</div><div class="sl">Total recouvré</div></div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:18px">
+  <div class="card">
+    <div class="card-header"><h3>🗂️ Accès Rapide Modules Fiscaux</h3></div>
+    <div class="card-body" style="padding:14px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px">
+        {% set modules = [
+          ('tnb_liste','🏗️','TNB','Terrains Non Bâtis'),
+          ('tdb_liste','🍺','Débits Boissons','Taxe trimestrielle'),
+          ('sta_liste','🚗','Stationnement','Droit annuel TPV'),
+          ('fou_liste','🔑','Fourrière','Droits & remorquage'),
+          ('odp_liste','🏪','Domaine Public','Occupation temporaire'),
+          ('loc_liste','🏢','Location Locaux','Baux communaux'),
+          ('sou_liste','🛒','Souks','Affermage marchés'),
+        ] %}
+        {% for route, icon, label, sublabel in modules %}
+        <a href="{{ url_for(route) }}" style="background:var(--bg);border-radius:10px;padding:14px;text-align:center;text-decoration:none;color:var(--text);border:1.5px solid var(--border);transition:all .2s;display:block" onmouseover="this.style.borderColor='var(--primary)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
+          <div style="font-size:1.8rem">{{ icon }}</div>
+          <div style="font-size:.78rem;font-weight:800;color:var(--primary);margin-top:4px">{{ label }}</div>
+          <div style="font-size:.65rem;color:var(--muted)">{{ sublabel }}</div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>📋 Activité Récente</h3></div>
+    <div style="overflow-y:auto;max-height:320px">
+      {% for d in recentes %}
+      <div style="padding:9px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.78rem;font-weight:700;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.nom }} {{ d.prenom or d.raison_sociale or '' }}</div>
+          <div style="font-size:.68rem;color:var(--muted)">{{ d.module }} — {{ d.annee }}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:.8rem;font-weight:700">{{ "%.0f"|format(d.montant_total) }} DH</div>
+          <span class="badge {% if d.statut=='paye' %}b-ok{% elif d.statut=='emis' %}b-warn{% else %}b-sec{% endif %}" style="font-size:.6rem">{{ d.statut }}</span>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state"><span class="ei">📭</span>Aucune activité</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>⚡ Actions Rapides</h3></div>
+  <div class="card-body df gap-2" style="flex-wrap:wrap">
+    <a href="{{ url_for('ajouter_contribuable') }}" class="btn btn-primary">👤 Nouveau Contribuable</a>
+    <a href="{{ url_for('tnb_liste') }}" class="btn btn-accent">🏗️ Gérer TNB</a>
+    <a href="{{ url_for('tdb_liste') }}" class="btn btn-outline">🍺 Débits Boissons</a>
+    <a href="{{ url_for('paiements') }}" class="btn btn-ok">💳 Bulletins Paiement</a>
+    <a href="{{ url_for('avis') }}" class="btn btn-danger">📨 Avis Non-Paiement</a>
+    <a href="{{ url_for('tarifs') }}" class="btn btn-outline">💰 Arrêté Fiscal</a>
+  </div>
+</div>
+{% endblock %}

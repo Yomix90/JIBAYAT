@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion — GFC Maroc</title>
+<style>
+:root {
+  --primary:#1e3a5f; --primary-l:#2a5298; --accent:#e8a020;
+  --bg:#f0f4f8; --card:#fff; --text:#2c3e50; --border:#dde3ec;
+  --shadow:0 10px 30px rgba(0,0,0,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;align-items:center;justify-content:center}
+.login-box{background:var(--card);width:100%;max-width:400px;border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.login-header{background:linear-gradient(135deg,var(--primary),var(--primary-l));padding:30px 20px;text-align:center;color:#fff}
+.login-header h1{font-size:1.5rem;font-weight:800;margin-bottom:5px}
+.login-header p{font-size:.8rem;opacity:.8}
+.login-body{padding:30px}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:.75rem;font-weight:700;color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;transition:border-color .15s;font-family:inherit}
+.form-group input:focus{outline:none;border-color:var(--primary-l);box-shadow:0 0 0 3px rgba(42,82,152,.1)}
+.btn-login{width:100%;background:var(--primary);color:#fff;border:none;padding:12px;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;transition:background .15s;margin-top:10px}
+.btn-login:hover{background:var(--primary-l)}
+.alert{background:#f8d7da;color:#721c24;padding:10px 14px;border-radius:8px;font-size:.8rem;margin-bottom:18px;border-left:4px solid #e74c3c}
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="login-header">
+    <h1>🏛️ GFC Maroc</h1>
+    <p>Gestion Fiscale Communale</p>
+  </div>
+  <div class="login-body">
+    {% if error %}
+    <div class="alert">{{ error }}</div>
+    {% endif %}
+    <form method="POST">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" required autofocus placeholder="admin@commune.ma">
+      </div>
+      <div class="form-group">
+        <label>Mot de passe</label>
+        <input type="password" name="password" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn-login">Se connecter</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

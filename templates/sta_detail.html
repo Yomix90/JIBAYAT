@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}Véhicule {{ vehicule.immatriculation }}{% endblock %}
+{% block page_title %}🚗 Véhicule — {{ vehicule.immatriculation }}{% endblock %}
+{% block content %}
+<div class="df gap-2 mb-3">
+  <a href="{{ url_for('sta_liste') }}" class="btn btn-outline btn-sm">← Liste</a>
+  <a href="{{ url_for('sta_paiement', id=vehicule.id) }}" class="btn btn-accent">💳 Paiement Annuel</a>
+  <button onclick="openModal('editVeh')" class="btn btn-primary btn-sm">✏️ Modifier</button>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="card">
+    <div class="card-header"><h3>🚗 Informations Véhicule</h3></div>
+    <div class="card-body" style="font-size:.84rem">
+      <div style="display:grid;gap:8px">
+        <div><span class="text-muted" style="font-size:.7rem">N°</span><div><strong style="color:var(--primary)">{{ vehicule.numero }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Immatriculation</span><div><strong style="font-size:1.1rem">{{ vehicule.immatriculation }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Type</span><div><span class="badge b-info">{{ vehicule.type_vehicule }}</span></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Sièges</span><div>{{ vehicule.nombre_sieges or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">N° Autorisation</span><div>{{ vehicule.num_autorisation or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Date Autorisation</span><div>{{ vehicule.date_autorisation or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Statut</span><div><span class="badge {{ 'b-ok' if vehicule.statut=='actif' else 'b-danger' }}">{{ vehicule.statut }}</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>👤 Propriétaire</h3></div>
+    <div class="card-body" style="font-size:.84rem">
+      <div style="display:grid;gap:8px">
+        <div><span class="text-muted" style="font-size:.7rem">N° Contribuable</span><div><strong style="color:var(--primary)">{{ vehicule.ctb_num }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Nom</span><div><strong>{{ vehicule.nom }} {{ vehicule.prenom or vehicule.raison_sociale or '' }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">CIN</span><div>{{ vehicule.cin or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Téléphone</span><div>{{ vehicule.telephone or '—' }}</div></div>
+      </div>
+      {% if annees_manquantes %}
+      <div style="margin-top:12px;background:var(--warn-bg);border-radius:8px;padding:10px;border-left:4px solid var(--warn-bd)">
+        <div style="font-size:.72rem;font-weight:700;color:#856404">⚠️ Années impayées: {% for a in annees_manquantes %}<span class="badge b-warn">{{ a }}</span> {% endfor %}</div>
+        <a href="{{ url_for('sta_paiement', id=vehicule.id) }}" class="btn btn-accent btn-xs mt-2">Régulariser →</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header"><h3>📄 Historique Paiements Annuels</h3><a href="{{ url_for('sta_paiement', id=vehicule.id) }}" class="btn btn-accent btn-sm">+ Paiement</a></div>
+  <div class="table-responsive">
+    <table>
+      <thead><tr><th>N° Décl.</th><th>Année</th><th>Montant</th><th>Pénalité</th><th>Total</th><th>Bulletin</th><th>Statut</th></tr></thead>
+      <tbody>
+        {% for d in declarations %}
+        <tr>
+          <td><small style="color:var(--primary)">{{ d.numero }}</small></td>
+          <td><strong>{{ d.annee }}</strong></td>
+          <td>{{ "%.2f"|format(d.montant_principal) }} DH</td>
+          <td>{% if d.penalite_retard>0 %}<span class="text-danger">{{ "%.2f"|format(d.penalite_retard) }}</span>{% else %}—{% endif %}</td>
+          <td><strong>{{ "%.2f"|format(d.montant_total) }} DH</strong></td>
+          <td><small>{{ d.numero_bulletin or '—' }}</small></td>
+          <td><span class="badge {% if d.statut=='paye' %}b-ok{% elif d.statut=='emis' %}b-warn{% else %}b-sec{% endif %}">{{ d.statut }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty-state">Aucun paiement enregistré</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="modal-overlay" id="editVeh">
+  <div class="modal">
+    <div class="modal-header"><h3>✏️ Modifier Véhicule</h3><button class="modal-close" onclick="closeModal('editVeh')">✕</button></div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('sta_modifier', id=vehicule.id) }}">
+        <div class="form-grid mb-3">
+          <div class="form-group"><label>Immatriculation</label><input name="immatriculation" value="{{ vehicule.immatriculation or '' }}"></div>
+          <div class="form-group"><label>Type véhicule</label>
+            <select name="type_vehicule">
+              {% for t in tarifs %}<option value="{{ t.libelle }}" {{ 'selected' if t.libelle==vehicule.type_vehicule }}>{{ t.libelle }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-group"><label>N° Autorisation</label><input name="num_autorisation" value="{{ vehicule.num_autorisation or '' }}"></div>
+          <div class="form-group"><label>Nombre sièges</label><input type="number" name="nombre_sieges" value="{{ vehicule.nombre_sieges or 0 }}"></div>
+          <div class="form-group"><label>Statut</label>
+            <select name="statut"><option value="actif" {{ 'selected' if vehicule.statut=='actif' }}>Actif</option><option value="inactif" {{ 'selected' if vehicule.statut=='inactif' }}>Inactif</option><option value="radie" {{ 'selected' if vehicule.statut=='radie' }}>Radié</option></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('editVeh')">Annuler</button>
+          <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

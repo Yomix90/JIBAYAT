@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}{{ item.numero }}{% endblock %}
+{% block page_title %}{{ module_icon }} {{ module_label }} — {{ item.numero }}{% endblock %}
+{% block content %}
+<div class="df gap-2 mb-3">
+  <a href="{{ back_url }}" class="btn btn-outline btn-sm">← Liste</a>
+  <a href="{{ paiement_url }}" class="btn btn-accent">💳 Paiement</a>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="card"><div class="card-header"><h3>📋 Informations</h3></div>
+    <div class="card-body" style="font-size:.84rem">
+      <div style="display:grid;gap:8px">
+        {% for k, v in infos %}
+        <div><span class="text-muted" style="font-size:.7rem">{{ k }}</span><div><strong>{{ v or '—' }}</strong></div></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="card"><div class="card-header"><h3>👤 Contribuable</h3></div>
+    <div class="card-body" style="font-size:.84rem">
+      <div style="display:grid;gap:8px">
+        <div><span class="text-muted" style="font-size:.7rem">N°</span><div><strong style="color:var(--primary)">{{ item.ctb_num }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Nom</span><div><strong>{{ item.nom }} {{ item.prenom or item.raison_sociale or '' }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Tél.</span><div>{{ item.telephone or '—' }}</div></div>
+      </div>
+      {% if annees_manquantes %}
+      <div style="margin-top:12px;background:var(--warn-bg);border-radius:8px;padding:10px;border-left:4px solid var(--warn-bd)">
+        <div style="font-size:.72rem;font-weight:700;color:#856404">⚠️ Années non payées: {% for a in annees_manquantes %}<span class="badge b-warn">{{ a }}</span> {% endfor %}</div>
+        <a href="{{ paiement_url }}" class="btn btn-accent btn-xs mt-2">Régulariser →</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<div class="card"><div class="card-header"><h3>📄 Déclarations / Paiements</h3><a href="{{ paiement_url }}" class="btn btn-accent btn-sm">+ Paiement</a></div>
+  <div class="table-responsive"><table>
+    <thead><tr><th>N° Décl.</th><th>Année</th><th>Montant</th><th>Pénalité</th><th>Total</th><th>Bulletin</th><th>Statut</th></tr></thead>
+    <tbody>
+      {% for d in declarations %}
+      <tr>
+        <td><small style="color:var(--primary)">{{ d.numero }}</small></td>
+        <td><strong>{{ d.annee }}</strong></td>
+        <td>{{ "%.2f"|format(d.montant_principal) }} DH</td>
+        <td>{% if d.penalite_retard>0 %}<span class="text-danger">{{ "%.2f"|format(d.penalite_retard) }}</span>{% else %}—{% endif %}</td>
+        <td><strong>{{ "%.2f"|format(d.montant_total) }} DH</strong></td>
+        <td><small>{{ d.numero_bulletin or '—' }}</small></td>
+        <td><span class="badge {% if d.statut=='paye' %}b-ok{% elif d.statut=='emis' %}b-warn{% else %}b-sec{% endif %}">{{ d.statut }}</span></td>
+      </tr>
+      {% else %}<tr><td colspan="7" class="empty-state">Aucune déclaration</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

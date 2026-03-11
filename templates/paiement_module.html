@@ -1,0 +1,354 @@
+{% extends 'base.html' %}
+{% block title %}Paiement — {{ module_label }}{% endblock %}
+{% block page_title %}💳 Paiement — {{ module_label }}{% endblock %}
+{% block extra_head %}
+<style>
+.annee-card{background:var(--card);border-radius:10px;padding:14px;box-shadow:var(--shadow);border-top:4px solid var(--danger);min-width:160px}
+.annee-card.paye{border-top-color:var(--ok)}
+.annee-card.emis{border-top-color:var(--accent)}
+.annee-card h4{font-size:.82rem;font-weight:800;color:var(--primary)}
+.annee-card .montant{font-size:1.1rem;font-weight:800;margin:4px 0}
+.annees-grid{display:flex;flex-wrap:wrap;gap:12px;padding:16px}
+.param-chip{background:var(--bg);border-radius:6px;padding:6px 10px;font-size:.72rem;border:1px solid var(--border)}
+.param-chip .val{font-weight:800;color:var(--primary)}
+</style>
+{% endblock %}
+{% block content %}
+<div class="df gap-2 mb-3">
+  {% if module=='TNB' %}<a href="{{ url_for('tnb_liste') }}" class="btn btn-outline btn-sm">← Retour TNB</a>
+  {% elif module=='DEBITS_BOISSONS' %}<a href="{{ url_for('tdb_liste') }}" class="btn btn-outline btn-sm">← Retour Débits</a>
+  {% elif module=='STATIONNEMENT' %}<a href="{{ url_for('sta_liste') }}" class="btn btn-outline btn-sm">← Retour Stationnement</a>
+  {% elif module=='FOURRIERE' %}<a href="{{ url_for('fou_liste') }}" class="btn btn-outline btn-sm">← Retour Fourrière</a>
+  {% elif module=='OCCUPATION_DOMAINE' %}<a href="{{ url_for('odp_liste') }}" class="btn btn-outline btn-sm">← Retour Domaine Public</a>
+  {% elif module=='LOCATION_LOCAUX' %}<a href="{{ url_for('loc_liste') }}" class="btn btn-outline btn-sm">← Retour Location</a>
+  {% elif module=='AFFERMAGE_SOUKS' %}<a href="{{ url_for('sou_liste') }}" class="btn btn-outline btn-sm">← Retour Souks</a>
+  {% endif %}
+  <a href="{{ url_for('export_excel', module=module) }}" class="btn btn-success btn-sm">📊 Excel</a>
+</div>
+
+<!-- Objet infos -->
+<div class="card">
+  <div class="card-header">
+    <h3>📋 Objet: {% if objet.nom_etablissement %}{{ objet.nom_etablissement }}{% elif objet.immatriculation %}{{ objet.immatriculation }}{% elif objet.numero_terrain %}{{ objet.numero_terrain }}{% elif objet.ref_local %}{{ objet.ref_local }}{% elif objet.numero %}{{ objet.numero }}{% endif %}</h3>
+    <span><strong>{{ objet.nom }} {{ objet.prenom or objet.raison_sociale or '' }}</strong></span>
+  </div>
+</div>
+
+<!-- Paramètres du module -->
+{% if params %}
+<div class="card">
+  <div class="card-header"><h3>⚙️ Règles de Calcul — {{ module_label }}</h3></div>
+  <div class="card-body" style="display:flex;flex-wrap:wrap;gap:8px">
+    {% for p in params %}
+    <div class="param-chip">{{ p.libelle }}: <span class="val">{{ p.valeur }} {{ p.unite }}</span></div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 1.4fr;gap:18px;align-items:start">
+  <!-- Saisie déclaration -->
+  <div class="card">
+    <div class="card-header"><h3>➕ Nouvelle Déclaration / Émission</h3></div>
+    <div class="card-body">
+      {% if annees_manquantes %}
+      <div class="alert alert-warn mb-3">
+        ⚠️ <strong>{{ annees_manquantes|length }} année(s) sans déclaration:</strong>
+        {% for a in annees_manquantes %}<span class="badge b-warn ml-1">{{ a }}</span>{% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('creer_declaration') }}" id="declForm">
+        <input type="hidden" name="module" value="{{ module }}">
+        <input type="hidden" name="reference_id" value="{{ ref_id }}">
+        <input type="hidden" name="contribuable_id" value="{{ objet.ctb_id }}">
+
+        <div class="form-grid mb-3">
+          <div class="form-group">
+            <label>Année *</label>
+            <select name="annee" id="anneeSelect" onchange="updateEcheance()">
+              {% for a in range(2025,2019,-1) %}
+              <option value="{{ a }}" {{ 'selected' if a in annees_manquantes else '' }}>{{ a }}{% if a in annees_manquantes %} ⚠️{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if module=='DEBITS_BOISSONS' %}
+          <div class="form-group">
+            <label>Trimestre</label>
+            <select name="trimestre">
+              <option value="1">T1 (Jan-Mars)</option><option value="2">T2 (Avr-Juin)</option>
+              <option value="3">T3 (Juil-Sep)</option><option value="4">T4 (Oct-Déc)</option>
+            </select>
+          </div>
+          {% endif %}
+          <div class="form-group">
+            <label>Date déclaration</label>
+            <input type="date" name="date_declaration" id="dateDecl" value="{{ today }}">
+          </div>
+          <div class="form-group">
+            <label>Date d'échéance</label>
+            <input type="date" name="date_echeance" id="dateEch">
+          </div>
+        </div>
+
+        <!-- Champs spécifiques par module -->
+        {% if module=='TNB' %}
+        <div class="form-grid mb-3">
+          <div class="form-group">
+            <label>Zone (Tarif)</label>
+            <select name="code_tarif" id="tarifSelect" onchange="selectTarif(this)">
+              {% for t in tarifs %}<option value="{{ t.code_tarif }}" data-val="{{ t.valeur }}">Zone {{ t.code_tarif[-1] }} — {{ t.libelle }} ({{ t.valeur }} {{ t.unite }})</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Superficie (m²)</label>
+            <input type="number" name="base_calcul" id="base" step="0.01" value="{{ objet.superficie or '' }}" oninput="calcul()">
+          </div>
+          <div class="form-group">
+            <label>Tarif DH/m²</label>
+            <input type="number" name="taux" id="taux" step="0.01" oninput="calcul()" readonly style="background:#f8f8f8">
+          </div>
+        </div>
+
+        {% elif module=='DEBITS_BOISSONS' %}
+        <div class="form-grid mb-3">
+          <div class="form-group">
+            <label>Type établissement (Taux)</label>
+            <select name="code_tarif" id="tarifSelect" onchange="selectTarif(this)">
+              {% for t in tarifs %}<option value="{{ t.code_tarif }}" data-val="{{ t.valeur }}">{{ t.libelle }} ({{ t.valeur }}%)</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Recettes HT du trimestre (DH)</label>
+            <input type="number" name="base_calcul" id="base" step="0.01" oninput="calcul()">
+          </div>
+          <div class="form-group">
+            <label>Taux %</label>
+            <input type="number" name="taux" id="taux" step="0.01" oninput="calcul()" readonly style="background:#f8f8f8">
+          </div>
+        </div>
+
+        {% elif module=='STATIONNEMENT' %}
+        <div class="form-grid mb-3">
+          <div class="form-group">
+            <label>Type véhicule (Tarif)</label>
+            <select name="code_tarif" id="tarifSelect" onchange="selectTarif(this)">
+              {% for t in tarifs %}<option value="{{ t.code_tarif }}" data-val="{{ t.valeur }}">{{ t.libelle }} ({{ t.valeur }} {{ t.unite }})</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Montant annuel (DH)</label>
+            <input type="number" name="base_calcul" id="base" step="0.01" oninput="calcul()">
+          </div>
+          <div class="form-group"><label>Taux</label><input type="hidden" name="taux" id="taux" value="0"></div>
+        </div>
+
+        {% elif module=='FOURRIERE' %}
+        <div class="form-grid mb-3">
+          <div class="form-group">
+            <label>Tarif garde</label>
+            <select name="code_tarif" id="tarifSelect" onchange="selectTarif(this)">
+              {% for t in tarifs %}<option value="{{ t.code_tarif }}" data-val="{{ t.valeur }}">{{ t.libelle }} ({{ t.valeur }} {{ t.unite }})</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Nombre de jours</label>
+            <input type="number" name="nb_jours" id="nbJours" min="1" oninput="calcFou()">
+          </div>
+          <div class="form-group">
+            <label>Tarif/jour (DH)</label>
+            <input type="number" name="taux" id="taux" step="0.01" oninput="calcFou()" readonly style="background:#f8f8f8">
+          </div>
+          <div class="form-group">
+            <label>Frais remorquage (DH)</label>
+            <input type="number" name="frais_remor" id="fraisRemor" step="1" value="150" oninput="calcFou()">
+          </div>
+          <input type="hidden" name="base_calcul" id="base">
+        </div>
+
+        {% else %}
+        <div class="form-grid mb-3">
+          <div class="form-group">
+            <label>Base / Montant (DH)</label>
+            <input type="number" name="base_calcul" id="base" step="0.01" oninput="calcul()">
+          </div>
+          <div class="form-group"><label>Taux %</label><input type="number" name="taux" id="taux" value="0" step="0.01" oninput="calcul()"></div>
+        </div>
+        {% endif %}
+
+        <!-- Hors délai / amende -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <label style="font-size:.8rem;display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" name="hors_delai" id="horsDelai" onchange="calcul()"> Hors délai de déclaration (amende 15%)
+          </label>
+        </div>
+
+        <!-- Résultat calcul -->
+        <div class="calcul-result" id="calculResult" style="display:none">
+          <div class="row">
+            <div class="item"><label>Principal</label><div class="val" id="rPrincipal">0 DH</div></div>
+            <div class="item"><label>Pénalité</label><div class="val" id="rPen">0 DH</div></div>
+            <div class="item"><label>Majoration</label><div class="val" id="rMaj">0 DH</div></div>
+            <div class="item"><label>Amende</label><div class="val" id="rAmende">0 DH</div></div>
+            <div class="item"><label>TOTAL</label><div class="val total" id="rTotal">0 DH</div></div>
+          </div>
+        </div>
+
+        <div class="form-group mt-2 mb-3">
+          <label>Notes</label>
+          <textarea name="notes" rows="2"></textarea>
+        </div>
+
+        {% if user.peut_creer_bulletin or user.peut_ajouter %}
+        <div class="form-actions">
+          <button type="submit" class="btn btn-accent">📋 Créer Déclaration & Bulletin</button>
+        </div>
+        {% else %}
+        <div class="alert alert-warn">⚠️ Accès non autorisé pour créer des déclarations.</div>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  <!-- Historique déclarations -->
+  <div>
+    <div class="card">
+      <div class="card-header"><h3>📄 Historique des Déclarations</h3></div>
+      {% if declarations %}
+      <div class="table-responsive">
+        <table>
+          <thead><tr>
+            <th>N° Décl.</th><th>Année</th>{% if module=='DEBITS_BOISSONS' %}<th>Trim.</th>{% endif %}
+            <th>Principal</th><th>Pénalité</th><th>Total</th><th>Bulletin</th><th>Statut</th>
+          </tr></thead>
+          <tbody>
+            {% for d in declarations %}
+            <tr>
+              <td><small style="color:var(--primary);font-weight:700">{{ d.numero }}</small></td>
+              <td><strong>{{ d.annee }}</strong></td>
+              {% if module=='DEBITS_BOISSONS' %}<td><span class="badge b-info">T{{ d.trimestre }}</span></td>{% endif %}
+              <td>{{ "%.2f"|format(d.montant_principal) }}</td>
+              <td>{% if d.penalite_retard>0 or d.majoration>0 %}
+                <span style="color:var(--danger);font-size:.75rem">+{{ "%.2f"|format(d.penalite_retard+d.majoration) }}</span>
+              {% else %}—{% endif %}</td>
+              <td><strong>{{ "%.2f"|format(d.montant_total) }} DH</strong></td>
+              <td>
+                {% if d.numero_bulletin %}<small style="color:var(--ok)">{{ d.numero_bulletin }}</small>
+                {% elif d.statut=='emis' and user.peut_creer_bulletin %}
+                <form method="post" action="{{ url_for('creer_bulletin') }}" style="display:inline">
+                  <input type="hidden" name="declaration_id" value="{{ d.id }}">
+                  <input type="hidden" name="date_paiement" value="{{ today }}">
+                  <button type="submit" class="btn btn-accent btn-xs">📋 Bulletin</button>
+                </form>
+                {% else %}—{% endif %}
+              </td>
+              <td><span class="badge {% if d.statut=='paye' %}b-ok{% elif d.statut=='emis' %}b-warn{% elif d.statut=='sous_seuil' %}b-sec{% else %}b-info{% endif %}">{{ d.statut }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:8px 14px;background:var(--bg);font-size:.75rem;color:var(--muted);border-top:1px solid var(--border)">
+        Total émis: <strong>{{ "%.2f"|format(declarations|sum(attribute='montant_total')) }} DH</strong>
+        | Payé: <strong class="text-ok">{{ "%.2f"|format(declarations|selectattr('statut','eq','paye')|sum(attribute='montant_total')) }} DH</strong>
+      </div>
+      {% else %}
+      <div class="empty-state"><span class="ei">📄</span>Aucune déclaration</div>
+      {% endif %}
+    </div>
+
+    <!-- Années manquantes visuelles -->
+    {% if annees_manquantes %}
+    <div class="card">
+      <div class="card-header"><h3>⚠️ Années Non Déclarées</h3></div>
+      <div class="annees-grid">
+        {% for a in annees_manquantes %}
+        <div class="annee-card">
+          <h4>{{ a }}</h4>
+          <div style="font-size:.72rem;color:var(--danger);font-weight:600">Non déclaré</div>
+          <button type="button" class="btn btn-accent btn-xs mt-2" onclick="preselectAnnee({{ a }})">Régulariser</button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+const today = '{{ today }}';
+
+// Init tarif au chargement
+window.addEventListener('DOMContentLoaded', ()=>{
+  const ts = document.getElementById('tarifSelect');
+  if(ts) selectTarif(ts);
+  updateEcheance();
+});
+
+function selectTarif(sel){
+  const val = sel.options[sel.selectedIndex]?.dataset?.val || 0;
+  const tauxEl = document.getElementById('taux');
+  if(tauxEl) tauxEl.value = val;
+  calcul();
+}
+
+function updateEcheance(){
+  const annee = document.getElementById('anneeSelect')?.value;
+  const echEl = document.getElementById('dateEch');
+  if(!echEl || !annee) return;
+  {% if module=='TNB' %}echEl.value = annee+'-03-31';
+  {% elif module=='DEBITS_BOISSONS' %}echEl.value = annee+'-04-30';
+  {% elif module=='STATIONNEMENT' %}echEl.value = annee+'-01-31';
+  {% elif module=='TRANSPORT_VOYAGEURS' %}echEl.value = annee+'-01-31';
+  {% elif module=='OCCUPATION_DOMAINE' %}echEl.value = annee+'-01-31';
+  {% elif module=='AFFERMAGE_SOUKS' %}echEl.value = annee+'-01-31';
+  {% else %}echEl.value = annee+'-12-31';{% endif %}
+  calcul();
+}
+
+function calcul(){
+  {% if module=='FOURRIERE' %}
+  calcFou(); return;
+  {% endif %}
+  const base = parseFloat(document.getElementById('base')?.value)||0;
+  const taux = parseFloat(document.getElementById('taux')?.value)||0;
+  let principal = {% if module in ['TNB','DEBITS_BOISSONS'] %}Math.round(base*(taux{% if module=='DEBITS_BOISSONS' %}/100{% endif %})*100)/100{% else %}base{% endif %};
+  fetchCalc(principal);
+}
+
+function calcFou(){
+  const jours = parseInt(document.getElementById('nbJours')?.value)||0;
+  const tarif = parseFloat(document.getElementById('taux')?.value)||0;
+  const remor = parseFloat(document.getElementById('fraisRemor')?.value)||0;
+  const principal = Math.round((jours*tarif+remor)*100)/100;
+  document.getElementById('base').value = principal;
+  fetchCalc(principal);
+}
+
+function fetchCalc(principal){
+  const ech = document.getElementById('dateEch')?.value||'';
+  const decl = document.getElementById('dateDecl')?.value||today;
+  const horsDelai = document.getElementById('horsDelai')?.checked?'1':'0';
+  const module = '{{ module }}';
+  if(principal<=0){document.getElementById('calculResult').style.display='none';return;}
+  fetch(`/api/calcul?montant=${principal}&echeance=${ech}&paiement=${decl}&module=${module}&hors_delai=${horsDelai}`)
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('calculResult').style.display='block';
+      document.getElementById('rPrincipal').textContent=principal.toFixed(2)+' DH';
+      document.getElementById('rPen').textContent=d.penalite.toFixed(2)+' DH';
+      document.getElementById('rMaj').textContent=d.majoration.toFixed(2)+' DH';
+      document.getElementById('rAmende').textContent=d.amende.toFixed(2)+' DH';
+      document.getElementById('rTotal').textContent=d.total.toFixed(2)+' DH';
+    });
+}
+
+function preselectAnnee(annee){
+  const sel=document.getElementById('anneeSelect');
+  if(sel){sel.value=annee;updateEcheance();}
+  document.getElementById('declForm').scrollIntoView({behavior:'smooth'});
+}
+
+document.getElementById('dateDecl')?.addEventListener('change',calcul);
+document.getElementById('dateEch')?.addEventListener('change',calcul);
+</script>
+{% endblock %}

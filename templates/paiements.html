@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Bulletins de Paiement{% endblock %}
+{% block page_title %}💳 Bulletins de Paiement{% endblock %}
+{% block content %}
+<div class="alert alert-info">
+  ℹ️ <strong>Workflow:</strong> L'<strong>Agent d'Assiette</strong> crée les bulletins → Le <strong>Régisseur</strong> valide et encaisse.
+  Votre rôle: <strong>{{ user.role_nom }}</strong>
+  {% if user.peut_creer_bulletin %}<span class="badge b-ok ml-1">✅ Peut créer bulletins</span>{% endif %}
+  {% if user.peut_valider_paiement %}<span class="badge b-info ml-1">✅ Peut valider paiements</span>{% endif %}
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:18px;align-items:start">
+  <!-- Créer bulletin — Agent d'assiette seulement -->
+  {% if user.peut_creer_bulletin %}
+  <div class="card">
+    <div class="card-header"><h3>📋 Créer Bulletin de Versement</h3><span style="font-size:.7rem;color:var(--muted)">Agent d'Assiette</span></div>
+    <div class="card-body">
+      {% if decls %}
+      <form method="post" action="{{ url_for('creer_bulletin') }}">
+        <div class="form-group mb-3">
+          <label>Déclaration émise *</label>
+          <select name="declaration_id" required onchange="showDeclInfo(this)">
+            <option value="">— Sélectionner déclaration —</option>
+            {% for d in decls %}
+            <option value="{{ d.id }}" data-montant="{{ d.montant_total }}" data-module="{{ d.module }}" data-ctb="{{ d.nom }} {{ d.prenom or d.raison_sociale or '' }}">
+              {{ d.numero }} | {{ d.module }} | {{ d.nom }} {{ d.prenom or d.raison_sociale or '' }} | {{ "%.2f"|format(d.montant_total) }} DH
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div id="declInfoBox" style="display:none;background:var(--bg);border-radius:8px;padding:10px;margin-bottom:12px;font-size:.8rem"></div>
+        <div class="form-group mb-3">
+          <label>Mode de Paiement</label>
+          <select name="mode_paiement">
+            <option value="especes">💵 Espèces</option>
+            <option value="cheque">🏦 Chèque</option>
+            <option value="virement">🔄 Virement bancaire</option>
+          </select>
+        </div>
+        <div class="form-group mb-3"><label>Date</label><input type="date" name="date_paiement" value="{{ today }}"></div>
+        <div class="form-group mb-3"><label>Notes</label><textarea name="notes" rows="2"></textarea></div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-accent">📋 Générer Bulletin → Régisseur</button>
+        </div>
+      </form>
+      {% else %}
+      <div class="empty-state"><span class="ei">✅</span>Toutes les déclarations ont un bulletin</div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card">
+    <div class="card-header"><h3>ℹ️ Rôle</h3></div>
+    <div class="card-body">
+      <div class="alert alert-info">En tant que <strong>{{ user.role_nom }}</strong>, vous validez les bulletins créés par les agents d'assiette.</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Liste bulletins -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Bulletins de Versement</h3>
+      <div class="df gap-2">
+        <span class="badge b-warn">En attente: {{ items|selectattr('statut','eq','en_attente')|list|length }}</span>
+        <span class="badge b-ok">Payés: {{ items|selectattr('statut','eq','paye')|list|length }}</span>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table>
+        <thead><tr><th>N° Bulletin</th><th>Contribuable</th><th>Module</th><th>Montant</th><th>Mode</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for b in items %}
+          <tr>
+            <td><strong style="color:var(--primary);font-size:.78rem">{{ b.numero_bulletin }}</strong></td>
+            <td style="font-size:.78rem"><strong>{{ b.nom }} {{ b.prenom or '' }}</strong><br><small>{{ b.annee }}</small></td>
+            <td><span class="badge b-info" style="font-size:.6rem">{{ b.module }}</span></td>
+            <td><strong>{{ "%.2f"|format(b.montant) }} DH</strong></td>
+            <td><span class="badge b-sec" style="font-size:.65rem">{{ b.mode_paiement }}</span></td>
+            <td><span class="badge {% if b.statut=='paye' %}b-ok{% elif b.statut=='en_attente' %}b-warn{% else %}b-sec{% endif %}">{{ b.statut }}</span></td>
+            <td>
+              {% if b.statut=='en_attente' and user.peut_valider_paiement %}
+              <form method="post" action="{{ url_for('valider_bulletin', id=b.id) }}" onsubmit="return confirm('Valider ce paiement de {{ "%.2f"|format(b.montant) }} DH?')">
+                <button type="submit" class="btn btn-ok btn-xs">✅ Valider</button>
+              </form>
+              {% elif b.statut=='en_attente' %}
+              <span class="badge b-warn" style="font-size:.62rem">⏳ Attente régisseur</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="empty-state"><span class="ei">💳</span>Aucun bulletin</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+function showDeclInfo(sel){
+  const opt = sel.options[sel.selectedIndex];
+  const box = document.getElementById('declInfoBox');
+  if(!opt.value){box.style.display='none';return;}
+  box.style.display='block';
+  box.innerHTML=`<strong>Contribuable:</strong> ${opt.dataset.ctb} | <strong>Module:</strong> ${opt.dataset.module} | <strong>Montant:</strong> <span style="color:var(--accent);font-weight:800">${parseFloat(opt.dataset.montant).toFixed(2)} DH</span>`;
+}
+</script>
+{% endblock %}

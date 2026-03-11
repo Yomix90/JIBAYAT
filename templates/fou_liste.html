@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Fourrière{% endblock %}
+{% block page_title %}🔑 Droits de Fourrière{% endblock %}
+{% block content %}
+<div class="alert alert-info">📋 Tarifs: {% for t in tarifs %}{{ t.libelle }}: <strong>{{ t.valeur }} {{ t.unite }}</strong>{% if not loop.last %} · {% endif %}{% endfor %}
+  <div class="ms-auto"><a href="{{ url_for('export_excel', module='FOURRIERE') }}" class="btn btn-success btn-sm">📊 Excel</a></div>
+</div>
+<div class="card">
+  <div class="card-header"><h3>Dossiers Fourrière ({{ items|length }})</h3><button onclick="openModal('addFou')" class="btn btn-primary btn-sm">➕ Nouveau Dossier</button></div>
+  <div class="search-bar">
+    <form method="get" style="display:flex;gap:8px;flex:1">
+      <input name="q" value="{{ q }}" placeholder="Immatriculation, N° dossier...">
+      <button type="submit" class="btn btn-primary btn-sm">🔍</button>
+      {% if q %}<a href="{{ url_for('fou_liste') }}" class="btn btn-outline btn-sm">✕</a>{% endif %}
+    </form>
+  </div>
+  <div class="table-responsive">
+    <table>
+      <thead><tr><th>N°</th><th>Immatriculation</th><th>Propriétaire</th><th>Type</th><th>Date Saisie</th><th>Jours</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for d in items %}
+        <tr>
+          <td><strong style="color:var(--primary)">{{ d.numero }}</strong></td>
+          <td><strong>{{ d.immatriculation }}</strong></td>
+          <td>{{ d.nom or '—' }} {{ d.prenom or d.raison_sociale or '' }}<br><small class="text-muted">{{ d.ctb_num or '' }}</small></td>
+          <td><span class="badge b-info">{{ d.type_vehicule }}</span></td>
+          <td style="font-size:.78rem">{{ d.date_mise_fourriere or '—' }}</td>
+          <td>{{ d.nb_jours }}</td>
+          <td><span class="badge {{ 'b-danger' if d.statut=='en_fourriere' else 'b-ok' }}">{{ d.statut }}</span></td>
+          <td>
+            <div class="df gap-2">
+              <a href="{{ url_for('fou_detail', id=d.id) }}" class="btn btn-primary btn-xs">🔍</a>
+              <a href="{{ url_for('fou_paiement', id=d.id) }}" class="btn btn-accent btn-xs">💳</a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty-state"><span class="ei">🔑</span>Aucun dossier</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="modal-overlay" id="addFou">
+  <div class="modal">
+    <div class="modal-header"><h3>🔑 Nouveau Dossier Fourrière</h3><button class="modal-close" onclick="closeModal('addFou')">✕</button></div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('fou_ajouter') }}">
+        <div class="form-group mb-3"><label>Propriétaire</label>
+          <select name="contribuable_id"><option value="">— Inconnu / À identifier —</option>
+            {% for c in contribuables %}<option value="{{ c.id }}">{{ c.numero }} — {{ c.nom }} {{ c.prenom or c.raison_sociale or '' }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-grid mb-3">
+          <div class="form-group"><label>Immatriculation *</label><input name="immatriculation" required></div>
+          <div class="form-group"><label>Type véhicule</label>
+            <select name="type_vehicule"><option>Voiture particulière</option><option>Moto/Scooter</option><option>Camionnette</option><option>Camion</option></select>
+          </div>
+          <div class="form-group"><label>Date mise en fourrière *</label><input type="date" name="date_mise_fourriere" required></div>
+          <div class="form-group"><label>Motif</label><input name="motif"></div>
+          <div class="form-group"><label>Nb jours</label><input type="number" name="nb_jours" min="1" value="1"></div>
+          <div class="form-group"><label>Frais remorquage (DH)</label><input type="number" name="frais_remorquage" step="1" value="150"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('addFou')">Annuler</button>
+          <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

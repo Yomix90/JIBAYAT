@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Location Locaux Commerciaux{% endblock %}
+{% block page_title %}🏢 Produit de Location Locaux Commerciaux{% endblock %}
+{% block content %}
+<div class="alert alert-info">📋 Produit de location des locaux à usage commercial ou professionnel appartenant à la commune.
+  <div class="ms-auto"><a href="{{ url_for('export_excel', module='LOCATION_LOCAUX') }}" class="btn btn-success btn-sm">📊 Excel</a></div>
+</div>
+<div class="card">
+  <div class="card-header"><h3>Baux ({{ items|length }})</h3><button onclick="openModal('addLoc')" class="btn btn-primary btn-sm">➕ Nouveau Bail</button></div>
+  <div class="table-responsive">
+    <table>
+      <thead><tr><th>N°</th><th>Réf. Local</th><th>Locataire</th><th>Adresse</th><th>Loyer/mois</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td><strong style="color:var(--primary)">{{ item.numero }}</strong></td>
+          <td><strong>{{ item.ref_local or '—' }}</strong></td>
+          <td>{{ item.nom }} {{ item.prenom or item.raison_sociale or '' }}<br><small class="text-muted">{{ item.ctb_num }}</small></td>
+          <td style="font-size:.78rem">{{ item.adresse or '—' }}</td>
+          <td><strong>{{ item.loyer_mensuel or '—' }} DH</strong></td>
+          <td><span class="badge {{ 'b-ok' if item.statut=='actif' else 'b-danger' }}">{{ item.statut }}</span></td>
+          <td><div class="df gap-2">
+            <a href="{{ url_for('loc_detail', id=item.id) }}" class="btn btn-primary btn-xs">🔍</a>
+            <a href="{{ url_for('loc_paiement', id=item.id) }}" class="btn btn-accent btn-xs">💳</a>
+          </div></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty-state"><span class="ei">🏢</span>Aucun bail</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="modal-overlay" id="addLoc">
+  <div class="modal">
+    <div class="modal-header"><h3>🏢 Nouveau Bail Commercial</h3><button class="modal-close" onclick="closeModal('addLoc')">✕</button></div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('loc_ajouter') }}">
+        <div class="form-group mb-3"><label>Locataire (Contribuable) *</label>
+          <select name="contribuable_id" required><option value="">— Sélectionner —</option>
+            {% for c in contribuables %}<option value="{{ c.id }}">{{ c.numero }} — {{ c.nom }} {{ c.prenom or c.raison_sociale or '' }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-grid mb-3">
+          <div class="form-group"><label>Référence Local *</label><input name="ref_local" required></div>
+          <div class="form-group"><label>Adresse</label><input name="adresse"></div>
+          <div class="form-group"><label>Superficie (m²)</label><input type="number" name="superficie" step="0.1"></div>
+          <div class="form-group"><label>Loyer Mensuel (DH)</label><input type="number" name="loyer_mensuel" step="1"></div>
+          <div class="form-group"><label>Date début</label><input type="date" name="date_debut"></div>
+          <div class="form-group"><label>Date fin</label><input type="date" name="date_fin"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('addLoc')">Annuler</button>
+          <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

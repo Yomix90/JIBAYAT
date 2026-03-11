@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Fourrière {{ dossier.numero }}{% endblock %}
+{% block page_title %}🔑 Dossier Fourrière — {{ dossier.numero }}{% endblock %}
+{% block content %}
+<div class="df gap-2 mb-3">
+  <a href="{{ url_for('fou_liste') }}" class="btn btn-outline btn-sm">← Liste</a>
+  <a href="{{ url_for('fou_paiement', id=dossier.id) }}" class="btn btn-accent">💳 Paiement</a>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="card"><div class="card-header"><h3>🔑 Dossier</h3></div>
+    <div class="card-body" style="font-size:.84rem">
+      <div style="display:grid;gap:8px">
+        <div><span class="text-muted" style="font-size:.7rem">N°</span><div><strong style="color:var(--primary)">{{ dossier.numero }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Immatriculation</span><div><strong style="font-size:1.1rem">{{ dossier.immatriculation }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Type</span><div><span class="badge b-info">{{ dossier.type_vehicule }}</span></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Date saisie</span><div>{{ dossier.date_mise_fourriere or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Nb jours</span><div><strong>{{ dossier.nb_jours }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Frais remorquage</span><div>{{ dossier.frais_remorquage }} DH</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Motif</span><div>{{ dossier.motif or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Statut</span><div><span class="badge {{ 'b-danger' if dossier.statut=='en_fourriere' else 'b-ok' }}">{{ dossier.statut }}</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card"><div class="card-header"><h3>👤 Propriétaire</h3></div>
+    <div class="card-body" style="font-size:.84rem">
+      {% if dossier.ctb_id %}<div style="display:grid;gap:8px">
+        <div><span class="text-muted" style="font-size:.7rem">N°</span><div><strong style="color:var(--primary)">{{ dossier.ctb_num }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Nom</span><div><strong>{{ dossier.nom }} {{ dossier.prenom or dossier.raison_sociale or '' }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Tél.</span><div>{{ dossier.telephone or '—' }}</div></div>
+      </div>{% else %}<div class="alert alert-warn">Propriétaire non identifié</div>{% endif %}
+    </div>
+  </div>
+</div>
+<div class="card"><div class="card-header"><h3>📄 Déclarations</h3><a href="{{ url_for('fou_paiement', id=dossier.id) }}" class="btn btn-accent btn-sm">+ Paiement</a></div>
+  <div class="table-responsive"><table>
+    <thead><tr><th>N° Décl.</th><th>Montant</th><th>Pénalité</th><th>Total</th><th>Bulletin</th><th>Statut</th></tr></thead>
+    <tbody>
+      {% for d in declarations %}
+      <tr>
+        <td><small style="color:var(--primary)">{{ d.numero }}</small></td>
+        <td>{{ "%.2f"|format(d.montant_principal) }}</td>
+        <td>{% if d.penalite_retard>0 %}<span class="text-danger">{{ "%.2f"|format(d.penalite_retard) }}</span>{% else %}—{% endif %}</td>
+        <td><strong>{{ "%.2f"|format(d.montant_total) }} DH</strong></td>
+        <td><small>{{ d.numero_bulletin or '—' }}</small></td>
+        <td><span class="badge {% if d.statut=='paye' %}b-ok{% elif d.statut=='emis' %}b-warn{% else %}b-sec{% endif %}">{{ d.statut }}</span></td>
+      </tr>
+      {% else %}<tr><td colspan="6" class="empty-state">Aucune déclaration</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

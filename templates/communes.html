@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Communes{% endblock %}
+{% block page_title %}🏘️ Gestion des Communes{% endblock %}
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:18px;align-items:start">
+  <div class="card">
+    <div class="card-header"><h3>➕ Ajouter Commune</h3></div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('ajouter_commune') }}">
+        <div class="form-group mb-3"><label>Nom (Français) *</label><input name="nom" required placeholder="Commune de ..."></div>
+        <div class="form-group mb-3"><label>Nom (العربية)</label><input name="nom_ar" dir="rtl" placeholder="بلدية ..."></div>
+        <div class="form-group mb-3"><label>Région</label><input name="region"></div>
+        <div class="form-group mb-3"><label>Province / Préfecture</label><input name="province"></div>
+        <div class="form-group mb-3"><label>Code *</label><input name="code" required placeholder="ex: COM001"></div>
+        <div class="form-actions"><button type="submit" class="btn btn-primary">💾 Ajouter</button></div>
+      </form>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Communes ({{ items|length }})</h3></div>
+    <div class="table-responsive">
+      <table>
+        <thead><tr><th>Code</th><th>Nom</th><th>بالعربية</th><th>Région</th><th>Province</th><th>Statut</th></tr></thead>
+        <tbody>
+          {% for c in items %}
+          <tr>
+            <td><strong style="color:var(--primary)">{{ c.code }}</strong></td>
+            <td><strong>{{ c.nom }}</strong></td>
+            <td dir="rtl" style="text-align:right;font-size:.82rem">{{ c.nom_ar or '—' }}</td>
+            <td style="font-size:.78rem">{{ c.region or '—' }}</td>
+            <td style="font-size:.78rem">{{ c.province or '—' }}</td>
+            <td><span class="badge b-ok">Actif</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="empty-state">Aucune commune</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

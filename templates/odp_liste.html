@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Occupation Domaine Public{% endblock %}
+{% block page_title %}🏪 Redevance Occupation Domaine Public{% endblock %}
+{% block content %}
+<div class="alert alert-info">📋 Redevance d'occupation temporaire du domaine public communal par des biens liés à l'exercice d'un commerce, d'une industrie ou d'une profession.
+  <div class="ms-auto"><a href="{{ url_for('export_excel', module='OCCUPATION_DOMAINE') }}" class="btn btn-success btn-sm">📊 Excel</a></div>
+</div>
+<div class="card">
+  <div class="card-header"><h3>Autorisations ({{ items|length }})</h3><button onclick="openModal('addOdp')" class="btn btn-primary btn-sm">➕ Nouvelle Autorisation</button></div>
+  <div class="table-responsive">
+    <table>
+      <thead><tr><th>N°</th><th>Type</th><th>Contribuable</th><th>Localisation</th><th>Superficie</th><th>Date début</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td><strong style="color:var(--primary)">{{ item.numero }}</strong></td>
+          <td><span class="badge b-info">{{ item.type_occupation or '—' }}</span></td>
+          <td>{{ item.nom }} {{ item.prenom or item.raison_sociale or '' }}<br><small class="text-muted">{{ item.ctb_num }}</small></td>
+          <td>{{ item.localisation or '—' }}</td>
+          <td>{{ item.superficie or '—' }} {% if item.superficie %}m²{% endif %}</td>
+          <td style="font-size:.78rem">{{ item.date_debut or '—' }}</td>
+          <td><span class="badge {{ 'b-ok' if item.statut=='actif' else 'b-danger' }}">{{ item.statut }}</span></td>
+          <td><div class="df gap-2">
+            <a href="{{ url_for('odp_detail', id=item.id) }}" class="btn btn-primary btn-xs">🔍</a>
+            <a href="{{ url_for('odp_paiement', id=item.id) }}" class="btn btn-accent btn-xs">💳</a>
+          </div></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty-state"><span class="ei">🏪</span>Aucune autorisation</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="modal-overlay" id="addOdp">
+  <div class="modal">
+    <div class="modal-header"><h3>🏪 Nouvelle Occupation Domaine Public</h3><button class="modal-close" onclick="closeModal('addOdp')">✕</button></div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('odp_ajouter') }}">
+        <div class="form-group mb-3"><label>Contribuable *</label>
+          <select name="contribuable_id" required><option value="">— Sélectionner —</option>
+            {% for c in contribuables %}<option value="{{ c.id }}">{{ c.numero }} — {{ c.nom }} {{ c.prenom or c.raison_sociale or '' }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-grid mb-3">
+          <div class="form-group"><label>Type Occupation</label>
+            <select name="type_occupation">
+              {% for t in tarifs %}<option value="{{ t.code_tarif }}">{{ t.libelle }} ({{ t.valeur }} {{ t.unite }})</option>{% endfor %}
+              <option value="autre">Autre</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Localisation</label><input name="localisation"></div>
+          <div class="form-group"><label>Superficie (m²)</label><input type="number" name="superficie" step="0.1"></div>
+          <div class="form-group"><label>N° Autorisation</label><input name="num_autorisation"></div>
+          <div class="form-group"><label>Date début</label><input type="date" name="date_debut"></div>
+          <div class="form-group"><label>Date fin</label><input type="date" name="date_fin"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('addOdp')">Annuler</button>
+          <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

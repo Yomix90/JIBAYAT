@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Souks Communaux{% endblock %}
+{% block page_title %}🛒 Affermage Souks Communaux{% endblock %}
+{% block content %}
+<div class="alert alert-info">📋 Produit d'affermage des souks et marchés communaux.
+  <div class="ms-auto"><a href="{{ url_for('export_excel', module='AFFERMAGE_SOUKS') }}" class="btn btn-success btn-sm">📊 Excel</a></div>
+</div>
+<div class="card">
+  <div class="card-header"><h3>Affermages ({{ items|length }})</h3><button onclick="openModal('addSou')" class="btn btn-primary btn-sm">➕ Nouvel Affermage</button></div>
+  <div class="table-responsive">
+    <table>
+      <thead><tr><th>N°</th><th>Souk</th><th>Emplacement</th><th>Fermier</th><th>Activité</th><th>Redevance/an</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td><strong style="color:var(--primary)">{{ item.numero }}</strong></td>
+          <td><strong>{{ item.nom_souk }}</strong></td>
+          <td>{{ item.num_emplacement or '—' }}</td>
+          <td>{{ item.nom }} {{ item.prenom or item.raison_sociale or '' }}<br><small class="text-muted">{{ item.ctb_num }}</small></td>
+          <td style="font-size:.78rem">{{ item.type_activite or '—' }}</td>
+          <td><strong>{{ item.redevance_annuelle or '—' }} DH</strong></td>
+          <td><span class="badge {{ 'b-ok' if item.statut=='actif' else 'b-danger' }}">{{ item.statut }}</span></td>
+          <td><div class="df gap-2">
+            <a href="{{ url_for('sou_detail', id=item.id) }}" class="btn btn-primary btn-xs">🔍</a>
+            <a href="{{ url_for('sou_paiement', id=item.id) }}" class="btn btn-accent btn-xs">💳</a>
+          </div></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty-state"><span class="ei">🛒</span>Aucun affermage</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="modal-overlay" id="addSou">
+  <div class="modal">
+    <div class="modal-header"><h3>🛒 Nouvel Affermage Souk</h3><button class="modal-close" onclick="closeModal('addSou')">✕</button></div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('sou_ajouter') }}">
+        <div class="form-group mb-3"><label>Fermier (Contribuable) *</label>
+          <select name="contribuable_id" required><option value="">— Sélectionner —</option>
+            {% for c in contribuables %}<option value="{{ c.id }}">{{ c.numero }} — {{ c.nom }} {{ c.prenom or c.raison_sociale or '' }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-grid mb-3">
+          <div class="form-group"><label>Nom du Souk *</label><input name="nom_souk" required></div>
+          <div class="form-group"><label>N° Emplacement</label><input name="num_emplacement"></div>
+          <div class="form-group"><label>Type Activité</label><input name="type_activite"></div>
+          <div class="form-group"><label>Redevance Annuelle (DH)</label><input type="number" name="redevance_annuelle" step="1"></div>
+          <div class="form-group"><label>Date début</label><input type="date" name="date_debut"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('addSou')">Annuler</button>
+          <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

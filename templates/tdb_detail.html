@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}{{ etab.nom_etablissement }}{% endblock %}
+{% block page_title %}🍺 {{ etab.nom_etablissement }}{% endblock %}
+{% block content %}
+<div class="df gap-2 mb-3">
+  <a href="{{ url_for('tdb_liste') }}" class="btn btn-outline btn-sm">← Liste</a>
+  <a href="{{ url_for('tdb_paiement', id=etab.id) }}" class="btn btn-accent">💳 Paiement & Déclarations</a>
+  <button onclick="openModal('editEtab')" class="btn btn-primary btn-sm">✏️ Modifier</button>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="card">
+    <div class="card-header"><h3>🍺 Informations Établissement</h3></div>
+    <div class="card-body" style="font-size:.84rem">
+      <div style="display:grid;gap:8px">
+        <div><span class="text-muted" style="font-size:.7rem">N°</span><div><strong style="color:var(--primary)">{{ etab.numero }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Nom</span><div><strong>{{ etab.nom_etablissement }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Type</span><div><span class="badge b-info">{{ etab.type_etablissement }}</span></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Adresse</span><div>{{ etab.adresse or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Superficie</span><div>{{ etab.superficie or '—' }} {% if etab.superficie %}m²{% endif %}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">N° Autorisation</span><div>{{ etab.numero_autorisation or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Date Autorisation</span><div>{{ etab.date_autorisation or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Statut</span><div><span class="badge {{ 'b-ok' if etab.statut=='actif' else 'b-danger' }}">{{ etab.statut }}</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>👤 Propriétaire</h3></div>
+    <div class="card-body" style="font-size:.84rem">
+      <div style="display:grid;gap:8px">
+        <div><span class="text-muted" style="font-size:.7rem">N° Contribuable</span><div><strong style="color:var(--primary)">{{ etab.ctb_num }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Nom</span><div><strong>{{ etab.nom }} {{ etab.prenom or etab.raison_sociale or '' }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">CIN</span><div>{{ etab.cin or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Téléphone</span><div>{{ etab.telephone or '—' }}</div></div>
+      </div>
+      {% if annees_manquantes %}
+      <div style="margin-top:12px;background:var(--warn-bg);border-radius:8px;padding:10px;border-left:4px solid var(--warn-bd)">
+        <div style="font-size:.72rem;font-weight:700;color:#856404">⚠️ Trimestres sans déclaration — Années: {% for a in annees_manquantes %}<span class="badge b-warn">{{ a }}</span> {% endfor %}</div>
+        <a href="{{ url_for('tdb_paiement', id=etab.id) }}" class="btn btn-accent btn-xs mt-2">Régulariser →</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header"><h3>📄 Historique Déclarations</h3><a href="{{ url_for('tdb_paiement', id=etab.id) }}" class="btn btn-accent btn-sm">+ Déclaration</a></div>
+  <div class="table-responsive">
+    <table>
+      <thead><tr><th>N° Décl.</th><th>Année</th><th>Trim.</th><th>Recettes HT</th><th>Taux</th><th>Principal</th><th>Pénalité</th><th>Total</th><th>Bulletin</th><th>Statut</th></tr></thead>
+      <tbody>
+        {% for d in declarations %}
+        <tr>
+          <td><small style="color:var(--primary)">{{ d.numero }}</small></td>
+          <td><strong>{{ d.annee }}</strong></td>
+          <td><span class="badge b-info">T{{ d.trimestre }}</span></td>
+          <td>{{ "%.2f"|format(d.base_calcul) }}</td>
+          <td>{{ d.taux }}%</td>
+          <td>{{ "%.2f"|format(d.montant_principal) }}</td>
+          <td>{% if d.penalite_retard>0 %}<span class="text-danger">{{ "%.2f"|format(d.penalite_retard) }}</span>{% else %}—{% endif %}</td>
+          <td><strong>{{ "%.2f"|format(d.montant_total) }} DH</strong></td>
+          <td><small>{{ d.numero_bulletin or '—' }}</small></td>
+          <td><span class="badge {% if d.statut=='paye' %}b-ok{% elif d.statut=='emis' %}b-warn{% else %}b-sec{% endif %}">{{ d.statut }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="empty-state">Aucune déclaration</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<!-- Modal modifier -->
+<div class="modal-overlay" id="editEtab">
+  <div class="modal">
+    <div class="modal-header"><h3>✏️ Modifier Établissement</h3><button class="modal-close" onclick="closeModal('editEtab')">✕</button></div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('tdb_modifier', id=etab.id) }}">
+        <div class="form-grid mb-3">
+          <div class="form-group"><label>Nom établissement</label><input name="nom_etablissement" value="{{ etab.nom_etablissement or '' }}"></div>
+          <div class="form-group"><label>Type</label>
+            <select name="type_etablissement">
+              {% for t in tarifs %}<option value="{{ t.code_tarif }}" {{ 'selected' if t.code_tarif==etab.type_etablissement }}>{{ t.libelle }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-group"><label>Adresse</label><input name="adresse" value="{{ etab.adresse or '' }}"></div>
+          <div class="form-group"><label>N° Autorisation</label><input name="numero_autorisation" value="{{ etab.numero_autorisation or '' }}"></div>
+          <div class="form-group"><label>Statut</label>
+            <select name="statut"><option value="actif" {{ 'selected' if etab.statut=='actif' }}>Actif</option><option value="ferme" {{ 'selected' if etab.statut=='ferme' }}>Fermé</option><option value="suspendu" {{ 'selected' if etab.statut=='suspendu' }}>Suspendu</option></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('editEtab')">Annuler</button>
+          <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
