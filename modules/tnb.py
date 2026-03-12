@@ -44,17 +44,17 @@ def tnb_liste():
         
         item['nb_non_paye'] = len(missing_years)
         
-        total_unpaid = 0
-        zone = item['zone']
-        sup = item['superficie'] or 0
+        total_unpaid = 0.0
+        zone = str(item['zone'] or 'A')
+        sup = float(item['superficie'] or 0.0)
         
         today = date.today().isoformat()
         for y in missing_years:
-            taux = 0
+            taux = 0.0
             for t in all_tarifs:
-                if t['code_tarif'] == zone and t['date_debut'] <= f"{y}-12-31":
-                    if not t['date_fin'] or t['date_fin'] >= f"{y}-01-01":
-                        taux = t['valeur']
+                if f"Zone {zone}" in str(t['libelle']) and str(t['date_debut']) <= f"{y}-12-31":
+                    if not t['date_fin'] or str(t['date_fin']) >= f"{y}-01-01":
+                        taux = float(t['valeur'])
                         break
             
             principal = round(sup * taux, 2)
@@ -185,24 +185,24 @@ def tnb_paiement(id):
         except: pass
         
     annees_man = annees_non_payees('TNB', id, debut)
-    all_tarifs = conn.execute("SELECT t.code_tarif, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' AND t.actif=1 ORDER BY t.date_debut DESC").fetchall()
+    all_tarifs = conn.execute("SELECT t.libelle, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' ORDER BY t.date_debut DESC").fetchall()
     amende_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
     
     annees_manquantes_details = []
-    zone = terrain['zone'] if terrain else 'A'
-    sup = terrain['superficie'] if terrain and terrain['superficie'] else 0
+    zone = str(terrain['zone'] or 'A') if terrain else 'A'
+    sup = float(terrain['superficie'] or 0.0) if terrain else 0.0
     today = date.today().isoformat()
     
     for y in annees_man:
-        taux = 0
+        taux = 0.0
         for t in all_tarifs:
-            if t['code_tarif'] == zone and t['date_debut'] <= f"{y}-12-31":
-                if not t['date_fin'] or t['date_fin'] >= f"{y}-01-01":
-                    taux = t['valeur']
+            if f"Zone {zone}" in str(t['libelle']) and str(t['date_debut']) <= f"{y}-12-31":
+                if not t['date_fin'] or str(t['date_fin']) >= f"{y}-01-01":
+                    taux = float(t['valeur'])
                     break
                     
         principal = round(sup * taux, 2)
-        pen, maj, amende = 0, 0, 0
+        pen, maj, amende = 0.0, 0.0, 0.0
         try: d_ech = date(y, 2, 28).isoformat()
         except: d_ech = date(y, 2, 28).isoformat()
         
@@ -237,15 +237,17 @@ def tnb_multi_declarations(id):
         return redirect(url_for('tnb.tnb_paiement', id=id))
         
     contrib_id = int(f['contribuable_id'])
-    zone_tarif = f.get('code_tarif')
-    base = float(f.get('base_calcul', 0))
-    taux = float(f.get('taux', 0))
     date_decl = f.get('date_declaration', date.today().isoformat())
     num_bulletin_manuel = f.get('numero_bulletin', '').strip()
     
     conn = get_db()
+    terrain = conn.execute('SELECT superficie, zone FROM terrains WHERE id=?', (id,)).fetchone()
+    if not terrain: return redirect(url_for('tnb.tnb_liste'))
+    base = terrain['superficie'] or 0
+    zone = terrain['zone'] or 'A'
+    
     declarations_creees = 0
-    all_tarifs = conn.execute("SELECT t.code_tarif, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' AND t.actif=1 ORDER BY t.date_debut DESC").fetchall()
+    all_tarifs = conn.execute("SELECT t.libelle, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' ORDER BY t.date_debut DESC").fetchall()
     amende_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
     
     for annee_str in annees:
@@ -259,15 +261,15 @@ def tnb_multi_declarations(id):
         try: date_ech = date(annee, 2, 28).isoformat()
         except: date_ech = date(annee, 2, 28).isoformat()
         
-        # Calcul dynamique basé sur l'année
-        taux_annee = 0
+        # Calcul dynamique basé sur l'année et la zone
+        taux_annee = 0.0
         for t in all_tarifs:
-            if t['code_tarif'] == zone_tarif and t['date_debut'] <= f"{annee}-12-31":
-                if not t['date_fin'] or t['date_fin'] >= f"{annee}-01-01":
-                    taux_annee = t['valeur']
+            if f"Zone {zone}" in str(t['libelle']) and str(t['date_debut']) <= f"{annee}-12-31":
+                if not t['date_fin'] or str(t['date_fin']) >= f"{annee}-01-01":
+                    taux_annee = float(t['valeur'])
                     break
                     
-        principal = round(base * taux_annee, 2)
+        principal = round(float(base) * taux_annee, 2)
         penalite, majoration, amende = 0, 0, 0
         
         hors_delai = date_decl > date_ech

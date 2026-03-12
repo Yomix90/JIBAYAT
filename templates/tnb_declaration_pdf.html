@@ -26,7 +26,15 @@
   @media print { .no-print { display: none; } }
 </style>
 </head>
-<body onload="{% if request.args.get('print') %}window.print();{% endif %}">
+<body class="print-mode">
+
+<script>
+  window.onload = function() {
+    {% if request.args.get('print') %}
+    window.print();
+    {% endif %}
+  };
+</script>
 
 <div class="no-print" style="margin-bottom:20px; text-align:center;">
     <button onclick="window.print()" style="padding:10px 20px; font-size:16px; cursor:pointer;">🖨️ Imprimer la déclaration (PDF)</button>

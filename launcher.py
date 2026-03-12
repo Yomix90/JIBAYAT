@@ -373,6 +373,13 @@ class ModernLauncher(tk.Tk):
         self.frm_update: tk.Frame
         self.lbl_update: tk.Label
         self._card_status: tk.Frame
+        
+        self.notebook: ttk.Notebook
+        self.tab_server: tk.Frame
+        self.tab_db: tk.Frame
+        self.var_gdrive: tk.BooleanVar
+        self.var_gd_webhook: tk.StringVar
+        self.var_gd_folder: tk.StringVar
         # ───────────────────────────────────────────────────
 
         self._apply_styles()
