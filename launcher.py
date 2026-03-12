@@ -1,6 +1,6 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
-import json, os, subprocess, socket, datetime, webbrowser, threading, urllib.parse
+from tkinter import ttk, messagebox, filedialog
+import json, os, subprocess, socket, datetime, webbrowser, threading, urllib.parse, shutil
 from typing import Optional
 import requests
 from PIL import Image, ImageDraw, ImageFont
@@ -384,6 +384,14 @@ class ModernLauncher(tk.Tk):
     def _apply_styles(self) -> None:
         s = ttk.Style(self)
         s.theme_use("clam")
+        
+        # Style Onglets (Notebook)
+        s.configure("TNotebook", background=COLORS["bg"], borderwidth=0)
+        s.configure("TNotebook.Tab", background=COLORS["card"], foreground=COLORS["text"],
+                    padding=[15, 6], font=FONT_BOLD, borderwidth=0)
+        s.map("TNotebook.Tab",
+              background=[("selected", COLORS["accent"])],
+              foreground=[("selected", COLORS["white"])])
         s.configure("TCombobox",
                      fieldbackground=COLORS["card"],
                      background=COLORS["card"],
@@ -413,9 +421,21 @@ class ModernLauncher(tk.Tk):
                   padx=10, pady=4, cursor="hand2",
                   command=self._do_git_pull).pack(side=tk.RIGHT, padx=15)
 
-        # ── Corps principal ──
-        main = tk.Frame(self, bg=COLORS["bg"], padx=25, pady=18)
+        # ── Corps principal (Onglets) ──
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
+
+        # Onglet Serveur
+        self.tab_server = tk.Frame(self.notebook, bg=COLORS["bg"])
+        self.notebook.add(self.tab_server, text="🖥️ Contrôle Serveur")
+        
+        main = tk.Frame(self.tab_server, bg=COLORS["bg"], padx=10, pady=5)
         main.pack(fill=tk.BOTH, expand=True)
+
+        # Onglet Base de données
+        self.tab_db = tk.Frame(self.notebook, bg=COLORS["bg"])
+        self.notebook.add(self.tab_db, text="💾 Base de données & Sauvegarde")
+        self._build_db_tab()
 
         # ── Carte statut ──
         self._card_status = tk.Frame(main, bg=COLORS["card"], padx=20, pady=18,
@@ -485,7 +505,94 @@ class ModernLauncher(tk.Tk):
                  text=f"GFC Maroc  v{self.version}  •  {self._commune_name()}",
                  font=("Segoe UI", 8), bg=COLORS["card"], fg=COLORS["muted"]).pack()
 
+    # ── Onglet Base de données ──────────────────
+    def _build_db_tab(self) -> None:
+        container = tk.Frame(self.tab_db, bg=COLORS["bg"], padx=20, pady=20)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        cfg = load_config() or {}
+        gdrive_dir = cfg.get("gdrive_backup", "")
+
+        # EXPORT / DRIVE
+        card_ex = tk.Frame(container, bg=COLORS["card"], padx=15, pady=15, highlightbackground=COLORS["border"], highlightthickness=1)
+        card_ex.pack(fill=tk.X, pady=(0, 20))
+
+        tk.Label(card_ex, text="📤 EXPORTER & SYNCHRONISER GOOGLE DRIVE", font=FONT_BOLD, bg=COLORS["card"], fg=COLORS["white"]).pack(anchor="w", pady=(0, 10))
+        
+        btn_frame = tk.Frame(card_ex, bg=COLORS["card"])
+        btn_frame.pack(fill=tk.X, pady=(0, 10))
+        tk.Button(btn_frame, text="📦 Exporter la base (.db)", bg=COLORS["accent"], fg="white", font=FONT_MAIN, relief="flat", padx=10, pady=6, cursor="hand2", command=self._export_db).pack(side=tk.LEFT)
+
+        tk.Label(card_ex, text="Acheminez dynamiquement la Base vers Google Drive (Dossier Synchro) :", font=FONT_MAIN, bg=COLORS["card"], fg=COLORS["muted"]).pack(anchor="w", pady=(0, 5))
+        
+        row_gd = tk.Frame(card_ex, bg=COLORS["card"])
+        row_gd.pack(fill=tk.X)
+        self.var_gdrive = tk.StringVar(value=gdrive_dir)
+        ent_gd = tk.Entry(row_gd, textvariable=self.var_gdrive, font=FONT_MAIN, bg=COLORS["bg"], fg=COLORS["text"], insertbackground=COLORS["text"], relief="flat")
+        ent_gd.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10), ipady=5)
+        
+        tk.Button(row_gd, text="Parcourir...", bg=COLORS["border"], fg="white", font=FONT_MAIN, relief="flat", cursor="hand2", command=self._browse_gdrive).pack(side=tk.LEFT, padx=(0, 5), ipady=2)
+        tk.Button(row_gd, text="💾 Sauvegarder Config", bg=COLORS["accent2"], fg="white", font=FONT_BOLD, relief="flat", cursor="hand2", command=self._save_gdrive_config).pack(side=tk.LEFT, ipady=2)
+
+        tk.Label(card_ex, text="ℹ️ La base sera sauvegardée automatiquement à l'arrêt du serveur si un dossier Google Drive est configuré.", font=("Segoe UI", 8, "italic"), bg=COLORS["card"], fg=COLORS["muted"]).pack(anchor="w", pady=(8, 0))
+
+        # IMPORT
+        card_im = tk.Frame(container, bg=COLORS["card"], padx=15, pady=15, highlightbackground=COLORS["border"], highlightthickness=1)
+        card_im.pack(fill=tk.X)
+        tk.Label(card_im, text="📥 RESTAURER UNE SAUVEGARDE", font=FONT_BOLD, bg=COLORS["card"], fg=COLORS["danger"]).pack(anchor="w", pady=(0, 10))
+        tk.Label(card_im, text="⚠️ L'importation d'une sauvegarde annulera et remplacera toutes les données actuelles.", font=FONT_MAIN, bg=COLORS["card"], fg=COLORS["warn"], justify="left").pack(anchor="w", pady=(0, 15))
+        tk.Button(card_im, text="🔄 Importer un fichier .db", bg=COLORS["danger"], fg="white", font=FONT_BOLD, relief="flat", padx=10, pady=6, cursor="hand2", command=self._import_db).pack(anchor="w")
+
+    def _browse_gdrive(self) -> None:
+        direction = filedialog.askdirectory(title="Sélectionner le dossier Google Drive")
+        if direction:
+            self.var_gdrive.set(direction)
+
+    def _save_gdrive_config(self) -> None:
+        cfg = load_config() or {}
+        cfg["gdrive_backup"] = self.var_gdrive.get().strip()
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+        messagebox.showinfo("OK", "Dossier automatique configuré. La sauvegarde se fera à l'arrêt du serveur.")
+        
+    def _auto_backup(self) -> None:
+        cfg = load_config() or {}
+        dest = cfg.get("gdrive_backup")
+        if dest and os.path.exists(dest) and os.path.exists("fiscalite.db"):
+            dt = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            target = os.path.join(dest, f"fiscalite_Sauvegarde_{dt}.db")
+            shutil.copy("fiscalite.db", target)
+
+    def _export_db(self) -> None:
+        if not os.path.exists("fiscalite.db"):
+            messagebox.showerror("Erreur", "Base inexistante.")
+            return
+        dt = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        target = filedialog.asksaveasfilename(defaultextension=".db", initialfile=f"fiscalite_Exporter_{dt}.db", title="Exporter la base (.db)")
+        if target:
+            try:
+                shutil.copy("fiscalite.db", target)
+                messagebox.showinfo("Export", f"Succès de l'exportation vers:\n{target}")
+            except Exception as e:
+                messagebox.showerror("Erreur", str(e))
+
+    def _import_db(self) -> None:
+        if self.server_thread is not None:
+            messagebox.showerror("Serveur ACTIF", "Veuillez d'abord arrêter le serveur (onglet précédent) avant d'importer une base de données, pour éviter de corrompre les données en cours d'utilisation.")
+            return
+        src = filedialog.askopenfilename(title="Ouvrir une sauvegarde de base de données (.db)", filetypes=[("Base SQLite", "*.db")])
+        if src:
+            if messagebox.askyesno("⚠ Avertissement", "Êtes-vous sûr de vouloir remplacer complètement la base actuelle ?\nToutes les modifications non sauvegardées seront perdues."):
+                try:
+                    if os.path.exists("fiscalite.db"):
+                        shutil.copy("fiscalite.db", "fiscalite_Secours.db")
+                    shutil.copy(src, "fiscalite.db")
+                    messagebox.showinfo("Import Réussi", "La base de données a été restaurée.\nUne copie de précaution de l'ancienne BD se trouve sous le nom 'fiscalite_Secours.db'.")
+                except Exception as e:
+                    messagebox.showerror("Erreur Import", str(e))
+
     # ── Utilitaires ──────────────────────────────
+
     def _commune_name(self) -> str:
         cfg = load_config()
         return cfg["commune"]["nom"] if cfg else "—"
@@ -509,6 +616,10 @@ class ModernLauncher(tk.Tk):
             t = self.server_thread
             self.server_thread = None
             def _do_stop():
+                try:
+                    self._auto_backup()
+                except Exception:
+                    pass
                 t.shutdown()
                 t.join(timeout=2)
                 self.after(0, self._set_status, False)
