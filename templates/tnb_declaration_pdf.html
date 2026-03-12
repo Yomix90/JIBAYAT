@@ -3,23 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <title>إقرار بامتلاك أرض حضرية غير مبنية لسنة {{ annee }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Tajawal:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4; margin: 20mm; }
-  body { font-family: "Arial", sans-serif; font-size: 14pt; color: #000; direction: rtl; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
-  .box-left { width: 30%; border: 1px solid #000; padding: 15px; min-height: 120px; font-size: 12pt; }
-  .box-middle { width: 35%; text-align: center; font-weight: bold; font-size: 16pt; font-style: italic; }
-  .box-right { width: 30%; border: 1px solid #000; padding: 15px; min-height: 120px; text-align: center; }
-  .box-right div { margin-bottom: 8px; }
-  .title { text-align: center; font-size: 20pt; font-weight: bold; font-style: italic; margin-bottom: 30px; }
-  .content-row { margin-bottom: 12px; display: flex; align-items: flex-end; }
-  .label { white-space: nowrap; margin-left: 10px; font-weight: bold; }
-  .dotted { flex-grow: 1; border-bottom: 2px dotted #000; height: 1em; text-align: center; font-family: monospace; }
-  .checkboxes { display: flex; gap: 40px; margin-right: 20px; }
+  @page { size: A4; margin: 15mm; }
+  body { font-family: 'Tajawal', 'Cairo', sans-serif; font-size: 13pt; color: #000; direction: rtl; line-height: 1.6; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
+  .box-left { width: 32%; border: 2px solid #000; padding: 15px; min-height: 130px; font-size: 11pt; border-radius: 4px; box-shadow: 2px 2px 0 #000; }
+  .box-middle { width: 34%; text-align: center; font-weight: 800; font-size: 18pt; line-height: 1.4; }
+  .box-right { width: 32%; font-size: 12pt; text-align: center; font-weight: 700; }
+  .box-right div { margin-bottom: 4px; }
+  .title { text-align: center; font-size: 22pt; font-weight: 800; margin-bottom: 30px; border-bottom: 2px solid #000; display: inline-block; padding-bottom: 5px; }
+  .title-container { text-align: center; width: 100%; margin-bottom: 40px; }
+  .content-row { margin-bottom: 15px; display: flex; align-items: flex-end; }
+  .label { white-space: nowrap; margin-left: 10px; font-weight: 700; }
+  .dotted { flex-grow: 1; border-bottom: 2px dotted #000; height: 1em; text-align: center; font-family: monospace; font-size: 14pt; }
+  .checkboxes { display: flex; gap: 40px; margin-right: 20px; font-weight: 700; }
   .checkbox { margin-left: 5px; }
-  .footer { margin-top: 50px; text-align: center; }
-  .signature-box { display: flex; justify-content: space-around; margin-top: 20px; }
-  .footnote { position: fixed; bottom: 0; left: 0; right: 0; font-size: 10pt; text-align: right; }
+  .footer { margin-top: 50px; text-align: center; font-size: 13pt; }
+  .signature-box { display: flex; justify-content: space-around; margin-top: 30px; }
+  .footnote { position: fixed; bottom: -5px; left: 0; right: 0; font-size: 10pt; text-align: right; border-top: 1px solid #000; padding-top: 5px; }
   /* Print hide button */
   @media print { .no-print { display: none; } }
 </style>
@@ -52,9 +54,9 @@
   </div>
 </div>
 
-<div class="title">
-  إقـــــــــــــــــــــــــــــرار<br>
-  بامتـــــــلاك أرض حضريــــة غيـــــر مبنيـــــة لسنة <span style="border-bottom:2px dotted #000; padding:0 30px;">{{ annee }}</span> (*)
+<div class="title-container">
+  <div class="title">إقـــــــــــــــــــــــــــــرار</div><br>
+  <strong style="font-size: 16pt;">بامتـــــــلاك أرض حضريــــة غيـــــر مبنيـــــة لسنة <span style="border-bottom:2px dotted #000; padding:0 30px;">{{ annee }}</span> (*)</strong>
 </div>
 
 <div class="content">
@@ -77,15 +79,15 @@
     <div class="dotted">{{ terrain.email }}</div>
   </div>
   
-  <div class="content-row" style="margin-top:20px;">
+  <div class="content-row" style="margin-top:25px;">
     <div class="label" style="width:200px">- صفة صاحب الإقرار:</div>
     <div class="checkboxes">
       <label>مالك ( ✓ )</label>
-      <label>مستغل ( &nbsp; )</label>
-      <label>حائز ( &nbsp; )</label>
+      <label>مستغل ( &nbsp;&nbsp;&nbsp; )</label>
+      <label>حائز ( &nbsp;&nbsp;&nbsp; )</label>
     </div>
   </div>
-  <div style="font-size:10pt; text-align:center; display:block; margin-top:-10px; margin-bottom:30px; font-style:italic">ضع علامة في الخانة المناسبة</div>
+  <div style="font-size:11pt; text-align:center; display:block; margin-top:-10px; margin-bottom:25px; color:#555">ضع علامة في الخانة المناسبة</div>
 
   <div class="content-row">
     <div class="label">- موقع العقار:</div>
@@ -93,11 +95,11 @@
     <div class="label">رقم الرسم العقاري:</div>
     <div class="dotted" style="flex-grow:0; width:150px;">{{ terrain.titre_foncier }}</div>
   </div>
-  <div class="content-row" style="margin-top:20px;">
+  <div class="content-row" style="margin-top:25px;">
     <div class="label">- المساحة (بالمتر المربع) :</div>
     <div class="dotted"><strong>{{ "%.2f"|format(terrain.superficie) }} م²</strong></div>
   </div>
-  <div class="content-row" style="margin-top:20px;">
+  <div class="content-row" style="margin-top:25px;">
     <div class="label">- الحصة في الملكية المشاعة :</div>
     <div class="dotted">100%</div>
   </div>

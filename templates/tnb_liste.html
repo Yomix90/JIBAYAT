@@ -34,7 +34,7 @@
     <table>
       <thead><tr>
         <th>N° Terrain</th><th>Propriétaire</th><th>Adresse</th>
-        <th>Zone</th><th>Superficie</th><th>Statut</th><th>Actions</th>
+        <th>Zone</th><th>Superficie</th><th>Statut</th><th>Restes à Payer</th><th>Actions</th>
       </tr></thead>
       <tbody>
         {% for t in items %}
@@ -55,6 +55,14 @@
             {% elif t.statut=='en_construction' %}<span class="badge b-info">🚧 En construction</span>
             {% elif t.statut=='construit' %}<span class="badge b-ok">🏠 Construit</span>
             {% else %}<span class="badge b-sec">{{ t.statut }}</span>{% endif %}
+          </td>
+          <td>
+            {% if t.nb_non_paye > 0 %}
+              <strong style="color:var(--danger)">{{ "%.2f"|format(t.total_non_paye) }} DH</strong><br>
+              <small style="color:var(--muted)">{{ t.nb_non_paye }} année(s)</small>
+            {% else %}
+              <span class="badge b-ok">À jour ✅</span>
+            {% endif %}
           </td>
           <td>
             <div class="df gap-2">

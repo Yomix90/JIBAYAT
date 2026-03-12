@@ -18,7 +18,61 @@ def tnb_liste():
     if q:
         sql += ' AND (c.nom LIKE ? OR t.numero_terrain LIKE ? OR t.adresse LIKE ? OR t.titre_foncier LIKE ?)'
         params = [f'%{q}%'] * 4
-    items = conn.execute(sql + ' ORDER BY t.date_creation DESC', params).fetchall()
+    items_raw = conn.execute(sql + ' ORDER BY t.date_creation DESC', params).fetchall()
+    
+    # Préchauffage des déclarations et tarifs pour optimiser le calcul
+    all_decls = conn.execute("SELECT reference_id, annee FROM declarations WHERE module='TNB' AND statut IN ('paye','emis','en_attente')").fetchall()
+    paid_map = {}
+    for d in all_decls:
+        paid_map.setdefault(d['reference_id'], set()).add(d['annee'])
+    
+    all_tarifs = conn.execute("SELECT t.code_tarif, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' AND t.actif=1 ORDER BY t.date_debut DESC").fetchall()
+    amende_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
+    
+    items = []
+    current_year = datetime.now().year
+    
+    for row in items_raw:
+        item = dict(row)
+        debut = 2020
+        if item['date_acquisition']:
+            try: debut = max(2020, int(item['date_acquisition'][:4]))
+            except: pass
+            
+        paid_years = paid_map.get(item['id'], set())
+        missing_years = [y for y in range(debut, current_year + 1) if y not in paid_years]
+        
+        item['nb_non_paye'] = len(missing_years)
+        
+        total_unpaid = 0
+        zone = item['zone']
+        sup = item['superficie'] or 0
+        
+        today = date.today().isoformat()
+        for y in missing_years:
+            taux = 0
+            for t in all_tarifs:
+                if t['code_tarif'] == zone and t['date_debut'] <= f"{y}-12-31":
+                    if not t['date_fin'] or t['date_fin'] >= f"{y}-01-01":
+                        taux = t['valeur']
+                        break
+            
+            principal = round(sup * taux, 2)
+            if principal > 0:
+                amende = 0
+                pen, maj = 0, 0
+                try: d_ech = date(y, 2, 28).isoformat()
+                except: d_ech = date(y, 2, 28).isoformat()
+                
+                if today > d_ech:
+                    amende = max(round(principal * amende_pct / 100, 2), 500)
+                    pen, maj = calculer_penalites(principal, d_ech, today, 'TNB')
+                    
+                total_unpaid += principal + pen + maj + amende
+                
+        item['total_non_paye'] = round(total_unpaid, 2)
+        items.append(item)
+    
     contribuables = conn.execute('SELECT id,numero,nom,prenom,raison_sociale FROM contribuables WHERE actif=1').fetchall()
     tarifs = get_tarifs_module('TNB')
     conn.close()
@@ -131,11 +185,46 @@ def tnb_paiement(id):
         except: pass
         
     annees_man = annees_non_payees('TNB', id, debut)
+    all_tarifs = conn.execute("SELECT t.code_tarif, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' AND t.actif=1 ORDER BY t.date_debut DESC").fetchall()
+    amende_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
+    
+    annees_manquantes_details = []
+    zone = terrain['zone'] if terrain else 'A'
+    sup = terrain['superficie'] if terrain and terrain['superficie'] else 0
+    today = date.today().isoformat()
+    
+    for y in annees_man:
+        taux = 0
+        for t in all_tarifs:
+            if t['code_tarif'] == zone and t['date_debut'] <= f"{y}-12-31":
+                if not t['date_fin'] or t['date_fin'] >= f"{y}-01-01":
+                    taux = t['valeur']
+                    break
+                    
+        principal = round(sup * taux, 2)
+        pen, maj, amende = 0, 0, 0
+        try: d_ech = date(y, 2, 28).isoformat()
+        except: d_ech = date(y, 2, 28).isoformat()
+        
+        if principal > 0 and today > d_ech:
+            amende = max(round(principal * amende_pct / 100, 2), 500)
+            pen, maj = calculer_penalites(principal, d_ech, today, 'TNB')
+            
+        annees_manquantes_details.append({
+            'annee': y,
+            'taux': taux,
+            'principal': principal,
+            'penalite': pen,
+            'majoration': maj,
+            'amende': amende,
+            'total': round(principal + pen + maj + amende, 2)
+        })
+    
     params_tnb = conn.execute("SELECT * FROM parametres_calcul WHERE module='TNB' ORDER BY code").fetchall()
     conn.close()
     return render_template('tnb_paiement.html', user=user, terrain=terrain, 
-        declarations=declarations, annees_manquantes=annees_man,
-        tarifs=tarifs, params=params_tnb, today=date.today().isoformat())
+        declarations=declarations, annees_manquantes=annees_manquantes_details,
+        tarifs=tarifs, params=params_tnb, today=today)
 
 @bp.route('/tnb/<int:id>/multi_declarations', methods=['POST'])
 @login_required
@@ -148,12 +237,17 @@ def tnb_multi_declarations(id):
         return redirect(url_for('tnb.tnb_paiement', id=id))
         
     contrib_id = int(f['contribuable_id'])
-    zone_tarif = f['code_tarif']
+    zone_tarif = f.get('code_tarif')
     base = float(f.get('base_calcul', 0))
     taux = float(f.get('taux', 0))
     date_decl = f.get('date_declaration', date.today().isoformat())
+    num_bulletin_manuel = f.get('numero_bulletin', '').strip()
     
     conn = get_db()
+    declarations_creees = 0
+    all_tarifs = conn.execute("SELECT t.code_tarif, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' AND t.actif=1 ORDER BY t.date_debut DESC").fetchall()
+    amende_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
+    
     for annee_str in annees:
         annee = int(annee_str)
         
@@ -161,35 +255,54 @@ def tnb_multi_declarations(id):
         existing = conn.execute('SELECT id FROM declarations WHERE module="TNB" AND reference_id=? AND annee=? AND statut!="annule"', (id, annee)).fetchone()
         if existing: continue
         
-        # Règles TNB : Décl limite 28 Février, Paiement limite 28 Février
-        # Mais on utilise les mêmes dates pour simplifier (ech = 28 ou 29 Fevrier de l'année concernée)
-        try:
-            date_ech = date(annee, 2, 28).isoformat()
-        except:
-            date_ech = date(annee, 2, 28).isoformat()
-            
-        principal = round(base * taux, 2)
+        # Règles TNB
+        try: date_ech = date(annee, 2, 28).isoformat()
+        except: date_ech = date(annee, 2, 28).isoformat()
+        
+        # Calcul dynamique basé sur l'année
+        taux_annee = 0
+        for t in all_tarifs:
+            if t['code_tarif'] == zone_tarif and t['date_debut'] <= f"{annee}-12-31":
+                if not t['date_fin'] or t['date_fin'] >= f"{annee}-01-01":
+                    taux_annee = t['valeur']
+                    break
+                    
+        principal = round(base * taux_annee, 2)
         penalite, majoration, amende = 0, 0, 0
         
         hors_delai = date_decl > date_ech
-        if hors_delai:
-            a_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
-            # Amende minimale 500 DH selon la loi marocaine sur la non déclaration
-            amende = max(round(principal * a_pct / 100, 2), 500)
+        if hors_delai and principal > 0:
+            amende = max(round(principal * amende_pct / 100, 2), 500)
             penalite, majoration = calculer_penalites(principal, date_ech, date_decl, 'TNB')
             
         total = round(principal + penalite + majoration + amende, 2)
-        statut = 'sous_seuil' if total < 200 else 'emis'
+        statut_decl = 'sous_seuil' if total < 200 else 'emis'
         num = gen_num('DCL', 'declarations')
         
-        conn.execute('''INSERT INTO declarations
+        cur = conn.execute('''INSERT INTO declarations
             (numero,module,reference_id,contribuable_id,commune_id,annee,
              base_calcul,taux,montant_principal,penalite_retard,majoration,amende_non_declaration,montant_total,
              statut,date_declaration,date_echeance,agent_id)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
             (num, 'TNB', id, contrib_id, 1, annee,
-             base, taux, principal, penalite, majoration, amende, total, statut,
+             base, taux_annee, principal, penalite, majoration, amende, total, statut_decl,
              date_decl, date_ech, user['id']))
+             
+        decl_id = cur.lastrowid
+        
+        # Création auto du bulletin manuel groupé si total >= 200 et num_bulletin fourni
+        if statut_decl == 'emis' and num_bulletin_manuel:
+            # On ajoute un suffixe d'année car le N° doit être unitaire unique dans la DB.
+            # Le régisseur verra le même N° prefixé dans l'outil (ex: B123-2022, B123-2023)
+            num_bul = f"{num_bulletin_manuel}-{annee}"
+            try:
+                conn.execute('''INSERT INTO bulletins (numero_bulletin,declaration_id,contribuable_id,
+                                commune_id,montant,mode_paiement,date_paiement,agent_id,statut) 
+                                VALUES (?,?,?,?,?,?,?,?,?)''',
+                            (num_bul, decl_id, contrib_id, 1, total, 'bulletin_manuel', date_decl, user['id'], 'en_attente'))
+            except: pass
+            
+        declarations_creees += 1
              
     conn.commit()
     conn.close()

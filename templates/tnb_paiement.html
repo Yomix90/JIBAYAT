@@ -54,21 +54,9 @@
         <input type="hidden" name="contribuable_id" value="{{ terrain.ctb_id }}">
 
         <div class="form-grid mb-3">
-          <div class="form-group">
-            <label>Zone (Tarif)</label>
-            <select name="code_tarif" id="tarifSelect" onchange="recalculateAll()">
-              {% for t in tarifs %}
-              <option value="{{ t.code_tarif }}" data-val="{{ t.valeur }}">Zone {{ t.code_tarif[-1] }} — {{ t.valeur }} {{ t.unite }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Superficie (m²)</label>
-            <input type="number" name="base_calcul" id="base" step="0.01" value="{{ terrain.superficie or '0' }}" oninput="recalculateAll()">
-          </div>
-          <div class="form-group">
-            <label>Tarif DH/m²</label>
-            <input type="number" name="taux" id="taux" step="0.01" readonly style="background:#f8f8f8">
+          <div class="form-group" style="grid-column: span 2">
+            <label>Numéro de Bulletin de Versement (Manuel) *</label>
+            <input type="text" name="numero_bulletin" required placeholder="Insérer le N° du bulletin de la RMP..." style="border:2px solid var(--accent); background:rgba(0,0,0,0.02); font-weight:bold; font-size:1.1rem; padding:10px">
           </div>
         </div>
 
@@ -76,11 +64,20 @@
           {% for a in annees_manquantes %}
           <div class="annee-row">
             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:700; font-size:1.1rem">
-              <input type="checkbox" name="annees" value="{{ a }}" class="year-chk" onchange="recalculateAll()"> {{ a }}
+              <input type="checkbox" name="annees" value="{{ a.annee }}" class="year-chk" 
+                     data-prin="{{ a.principal }}" data-pen="{{ a.penalite+a.majoration }}" data-amd="{{ a.amende }}" data-tot="{{ a.total }}"
+                     data-idx="{{ loop.index0 }}" onchange="handleCheck(this)"> 
+              {{ a.annee }}
             </label>
             <div style="text-align:right">
-              <span id="res-{{ a }}" style="font-weight:700; color:var(--primary)">0.00 DH</span>
-              <div id="det-{{ a }}" style="font-size:0.75rem; color:var(--danger)"></div>
+              <span id="res-{{ a.annee }}" style="font-weight:700; color:var(--primary)">{{ "%.2f"|format(a.total) }} DH</span>
+              <div id="det-{{ a.annee }}" style="font-size:0.75rem; color:var(--danger)">
+                {% if a.amende > 0 or a.penalite > 0 %}
+                Pén+Maj: {{ "%.2f"|format(a.penalite+a.majoration) }} | Amende: {{ "%.2f"|format(a.amende) }}
+                {% else %}
+                (Aucune pénalité)
+                {% endif %}
+              </div>
             </div>
           </div>
           {% endfor %}
@@ -147,43 +144,36 @@
 </div>
 
 <script>
-async function recalculateAll() {
-  const ts = document.getElementById('tarifSelect');
-  if(ts) document.getElementById('taux').value = ts.options[ts.selectedIndex]?.dataset?.val || 0;
+function handleCheck(chk) {
+  const checkboxes = Array.from(document.querySelectorAll('.year-chk'));
+  const currentIdx = parseInt(chk.dataset.idx);
+  const isChecked = chk.checked;
+
+  if (isChecked) {
+    // Si on coche l'année i, on coche toutes les années précédentes (index < i)
+    for (let i = 0; i < currentIdx; i++) {
+        checkboxes[i].checked = true;
+    }
+  } else {
+    // Si on décoche l'année i, on décoche toutes les années suivantes (index > i)
+    for (let i = currentIdx + 1; i < checkboxes.length; i++) {
+        checkboxes[i].checked = false;
+    }
+  }
   
-  const base = parseFloat(document.getElementById('base').value) || 0;
-  const taux = parseFloat(document.getElementById('taux').value) || 0;
-  const principal = Math.round(base * taux * 100) / 100;
-  
+  recalculateAll();
+}
+
+function recalculateAll() {
   const checkboxes = document.querySelectorAll('.year-chk');
   let tPrin = 0, tPen = 0, tAmd = 0, count = 0;
   
   for(let chk of checkboxes) {
-    const annee = parseInt(chk.value);
-    const resEl = document.getElementById('res-' + annee);
-    const detEl = document.getElementById('det-' + annee);
-    
-    if(chk.checked && principal > 0) {
+    if(chk.checked) {
       count++;
-      try {
-        const ech = annee + "-02-28";
-        // Appel d'API pour chaque année cochée
-        let r = await fetch(`/api/calcul?montant=${principal}&echeance=${ech}&paiement={{today}}&module=TNB&hors_delai=1`);
-        let d = await r.json();
-        
-        let amende = Math.max(Math.round(principal * 0.15 * 100) / 100, 500); // 15% MIN 500 DH pour TNB non déclaré
-        let total = principal + d.penalite + d.majoration + amende;
-        
-        resEl.textContent = total.toFixed(2) + ' DH';
-        detEl.textContent = `Pén: ${d.penalite.toFixed(2)} | Maj: ${d.majoration.toFixed(2)} | Amd: ${amende.toFixed(2)}`;
-        
-        tPrin += principal;
-        tPen += (d.penalite + d.majoration);
-        tAmd += amende;
-      } catch(e) { console.error(e); }
-    } else {
-      resEl.textContent = '0.00 DH';
-      detEl.textContent = '';
+      tPrin += parseFloat(chk.dataset.prin);
+      tPen += parseFloat(chk.dataset.pen);
+      tAmd += parseFloat(chk.dataset.amd);
     }
   }
   
