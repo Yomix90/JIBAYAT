@@ -54,3 +54,7 @@ Thumbs.db
 .env
 .env.local
 .env.production
+
+# ── Fichiers spéciaux Windows ────────────────
+nul
+nul/

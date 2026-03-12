@@ -17,13 +17,13 @@
     <div class="card-body" style="padding:14px">
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px">
         {% set modules = [
-          ('tnb_liste','🏗️','TNB','Terrains Non Bâtis'),
-          ('tdb_liste','🍺','Débits Boissons','Taxe trimestrielle'),
-          ('sta_liste','🚗','Stationnement','Droit annuel TPV'),
-          ('fou_liste','🔑','Fourrière','Droits & remorquage'),
-          ('odp_liste','🏪','Domaine Public','Occupation temporaire'),
-          ('loc_liste','🏢','Location Locaux','Baux communaux'),
-          ('sou_liste','🛒','Souks','Affermage marchés'),
+          ('tnb.tnb_liste','🏗️','TNB','Terrains Non Bâtis'),
+          ('tdb.tdb_liste','🍺','Débits Boissons','Taxe trimestrielle'),
+          ('sta.sta_liste','🚗','Stationnement','Droit annuel TPV'),
+          ('fou.fou_liste','🔑','Fourrière','Droits & remorquage'),
+          ('odp.odp_liste','🏪','Domaine Public','Occupation temporaire'),
+          ('loc.loc_liste','🏢','Location Locaux','Baux communaux'),
+          ('sou.sou_liste','🛒','Souks','Affermage marchés'),
         ] %}
         {% for route, icon, label, sublabel in modules %}
         <a href="{{ url_for(route) }}" style="background:var(--bg);border-radius:10px;padding:14px;text-align:center;text-decoration:none;color:var(--text);border:1.5px solid var(--border);transition:all .2s;display:block" onmouseover="this.style.borderColor='var(--primary)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
@@ -60,12 +60,12 @@
 <div class="card">
   <div class="card-header"><h3>⚡ Actions Rapides</h3></div>
   <div class="card-body df gap-2" style="flex-wrap:wrap">
-    <a href="{{ url_for('ajouter_contribuable') }}" class="btn btn-primary">👤 Nouveau Contribuable</a>
-    <a href="{{ url_for('tnb_liste') }}" class="btn btn-accent">🏗️ Gérer TNB</a>
-    <a href="{{ url_for('tdb_liste') }}" class="btn btn-outline">🍺 Débits Boissons</a>
+    <a href="{{ url_for('contribuables.ajouter_contribuable') }}" class="btn btn-primary">👤 Nouveau Contribuable</a>
+    <a href="{{ url_for('tnb.tnb_liste') }}" class="btn btn-accent">🏗️ Gérer TNB</a>
+    <a href="{{ url_for('tdb.tdb_liste') }}" class="btn btn-outline">🍺 Débits Boissons</a>
     <a href="{{ url_for('paiements') }}" class="btn btn-ok">💳 Bulletins Paiement</a>
     <a href="{{ url_for('avis') }}" class="btn btn-danger">📨 Avis Non-Paiement</a>
-    <a href="{{ url_for('tarifs') }}" class="btn btn-outline">💰 Arrêté Fiscal</a>
+    <a href="{{ url_for('config.arretes_fiscaux') }}" class="btn btn-outline">💰 Arrêté Fiscal</a>
   </div>
 </div>
 {% endblock %}

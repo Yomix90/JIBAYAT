@@ -3,8 +3,8 @@
 {% block page_title %}🏗️ Terrain — {{ terrain.numero_terrain }}{% endblock %}
 {% block content %}
 <div style="display:flex;gap:10px;margin-bottom:16px">
-  <a href="{{ url_for('tnb_liste') }}" class="btn btn-outline btn-sm">← Liste TNB</a>
-  <a href="{{ url_for('tnb_paiement', id=terrain.id) }}" class="btn btn-accent">💳 Paiement & Déclarations</a>
+  <a href="{{ url_for('tnb.tnb_liste') }}" class="btn btn-outline btn-sm">← Liste TNB</a>
+  <a href="{{ url_for('tnb.tnb_paiement', id=terrain.id) }}" class="btn btn-accent">💳 Paiement & Déclarations</a>
   <button onclick="openModal('editTerrain')" class="btn btn-primary btn-sm">✏️ Modifier</button>
   <button onclick="openModal('addPermis')" class="btn btn-info btn-sm">📄 Permis</button>
   <button onclick="openModal('addTransfert')" class="btn btn-outline btn-sm">🔄 Transfert</button>
@@ -56,7 +56,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           {% for a in annees_manquantes %}<span class="badge b-warn">{{ a }}</span>{% endfor %}
         </div>
-        <a href="{{ url_for('tnb_paiement', id=terrain.id) }}" class="btn btn-accent btn-xs" style="margin-top:8px">Régulariser →</a>
+        <a href="{{ url_for('tnb.tnb_paiement', id=terrain.id) }}" class="btn btn-accent btn-xs" style="margin-top:8px">Régulariser →</a>
       </div>
       {% endif %}
     </div>
@@ -66,7 +66,7 @@
 <!-- Déclarations -->
 <div class="card">
   <div class="card-header"><h3>📄 Historique des Déclarations TNB</h3>
-    <a href="{{ url_for('tnb_paiement', id=terrain.id) }}" class="btn btn-accent btn-sm">+ Nouvelle Déclaration</a>
+    <a href="{{ url_for('tnb.tnb_paiement', id=terrain.id) }}" class="btn btn-accent btn-sm">+ Nouvelle Déclaration</a>
   </div>
   <div class="table-responsive">
     <table>
@@ -136,7 +136,7 @@
   <div class="modal">
     <div class="modal-header"><h3>✏️ Modifier Terrain</h3><button class="modal-close" onclick="closeModal('editTerrain')">✕</button></div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('tnb_modifier', id=terrain.id) }}">
+      <form method="post" action="{{ url_for('tnb.tnb_modifier', id=terrain.id) }}">
         <div class="form-grid" style="margin-bottom:12px">
           <div class="form-group"><label>Adresse</label><input name="adresse" value="{{ terrain.adresse or '' }}"></div>
           <div class="form-group"><label>العنوان</label><input name="adresse_ar" dir="rtl" value="{{ terrain.adresse_ar or '' }}"></div>
@@ -172,7 +172,7 @@
   <div class="modal">
     <div class="modal-header"><h3>📄 Ajouter un Permis</h3><button class="modal-close" onclick="closeModal('addPermis')">✕</button></div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('tnb_permis', id=terrain.id) }}">
+      <form method="post" action="{{ url_for('tnb.tnb_permis', id=terrain.id) }}">
         <div class="form-grid" style="margin-bottom:12px">
           <div class="form-group"><label>Type de permis *</label>
             <select name="type_permis" required>
@@ -205,7 +205,7 @@
     <div class="modal-header"><h3>🔄 Transfert de Propriété</h3><button class="modal-close" onclick="closeModal('addTransfert')">✕</button></div>
     <div class="modal-body">
       <div class="alert alert-warning">⚠️ Le transfert changera le propriétaire du terrain. L'historique sera conservé.</div>
-      <form method="post" action="{{ url_for('tnb_transfert', id=terrain.id) }}">
+      <form method="post" action="{{ url_for('tnb.tnb_transfert', id=terrain.id) }}">
         <div class="form-grid" style="margin-bottom:12px">
           <div class="form-group"><label>Actuel propriétaire</label>
             <input value="{{ terrain.nom }} {{ terrain.prenom or '' }}" disabled style="background:#f0f4f8;color:var(--muted)">

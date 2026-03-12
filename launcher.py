@@ -46,14 +46,23 @@ class ServerThread(threading.Thread):
     def __init__(self, flask_app) -> None:  # type: ignore[type-arg]
         super().__init__(daemon=True)
         self.server = make_server("0.0.0.0", 5000, flask_app)
+        self.server.timeout = 1          # réponse rapide au poll
         ctx = flask_app.app_context()
         ctx.push()
 
     def run(self) -> None:
-        self.server.serve_forever()
+        self.server.serve_forever(poll_interval=0.5)
 
     def shutdown(self) -> None:
-        self.server.shutdown()
+        """Arrêt immédiat : on demande le shutdown ET on ferme le socket."""
+        try:
+            self.server.shutdown()       # envoie le signal d'arrêt
+        except Exception:
+            pass
+        try:
+            self.server.server_close()   # libère le port immédiatement
+        except Exception:
+            pass
 
 
 # ─────────────────────────────────────────────
@@ -443,7 +452,7 @@ class ModernLauncher(tk.Tk):
         btn_cfg = [
             ("▶  DÉMARRER LE SERVEUR",    COLORS["accent2"], self._start_server, "btn_start", tk.NORMAL),
             ("⏹  ARRÊTER LE SERVEUR",     COLORS["border"],  self._stop_server,  "btn_stop",  tk.DISABLED),
-            ("🌍  OUVRIR L'APPLICATION",   COLORS["accent"],  self._open_browser, "btn_web",   tk.NORMAL),
+            ("🌍 OUVRIR L'APPLICATION",   COLORS["accent"],  self._open_browser, "btn_web",   tk.NORMAL),
             ("⬇  MINIMISER DANS LA BARRE", COLORS["card"],   self._hide_to_tray, "btn_tray",  tk.NORMAL),
         ]
         for txt, color, cmd, attr, state in btn_cfg:
@@ -493,10 +502,17 @@ class ModernLauncher(tk.Tk):
 
     def _stop_server(self) -> None:
         if self.server_thread is not None:
-            self.server_thread.shutdown()
-            self.server_thread.join(timeout=3)
+            self.lbl_status.config(text="  ARRÊT EN COURS...", fg=COLORS["warn"])
+            self.btn_stop.config(state=tk.DISABLED)
+            self.update()
+            # Arrêt dans un thread séparé pour ne pas bloquer l'UI
+            t = self.server_thread
             self.server_thread = None
-            self._set_status(False)
+            def _do_stop():
+                t.shutdown()
+                t.join(timeout=2)
+                self.after(0, self._set_status, False)
+            threading.Thread(target=_do_stop, daemon=True).start()
 
     def _set_status(self, online: bool) -> None:
         if online:
@@ -576,11 +592,9 @@ class ModernLauncher(tk.Tk):
             pass
 
     def _show_update_banner(self) -> None:
-        children = self.winfo_children()
-        if len(children) > 1:
-            self.frm_update.pack(fill=tk.X, before=children[1])
-        else:
-            self.frm_update.pack(fill=tk.X)
+        """Affiche le bandeau de mise à jour si pas encore visible."""
+        if not self.frm_update.winfo_ismapped():
+            self.frm_update.pack(fill=tk.X, side=tk.TOP)
 
     def _check_updates_manual(self) -> None:
         try:

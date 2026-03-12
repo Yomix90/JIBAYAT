@@ -3,8 +3,8 @@
 {% block page_title %}🍺 {{ etab.nom_etablissement }}{% endblock %}
 {% block content %}
 <div class="df gap-2 mb-3">
-  <a href="{{ url_for('tdb_liste') }}" class="btn btn-outline btn-sm">← Liste</a>
-  <a href="{{ url_for('tdb_paiement', id=etab.id) }}" class="btn btn-accent">💳 Paiement & Déclarations</a>
+  <a href="{{ url_for('tdb.tdb_liste') }}" class="btn btn-outline btn-sm">← Liste</a>
+  <a href="{{ url_for('tdb.tdb_paiement', id=etab.id) }}" class="btn btn-accent">💳 Paiement & Déclarations</a>
   <button onclick="openModal('editEtab')" class="btn btn-primary btn-sm">✏️ Modifier</button>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -35,14 +35,14 @@
       {% if annees_manquantes %}
       <div style="margin-top:12px;background:var(--warn-bg);border-radius:8px;padding:10px;border-left:4px solid var(--warn-bd)">
         <div style="font-size:.72rem;font-weight:700;color:#856404">⚠️ Trimestres sans déclaration — Années: {% for a in annees_manquantes %}<span class="badge b-warn">{{ a }}</span> {% endfor %}</div>
-        <a href="{{ url_for('tdb_paiement', id=etab.id) }}" class="btn btn-accent btn-xs mt-2">Régulariser →</a>
+        <a href="{{ url_for('tdb.tdb_paiement', id=etab.id) }}" class="btn btn-accent btn-xs mt-2">Régulariser →</a>
       </div>
       {% endif %}
     </div>
   </div>
 </div>
 <div class="card">
-  <div class="card-header"><h3>📄 Historique Déclarations</h3><a href="{{ url_for('tdb_paiement', id=etab.id) }}" class="btn btn-accent btn-sm">+ Déclaration</a></div>
+  <div class="card-header"><h3>📄 Historique Déclarations</h3><a href="{{ url_for('tdb.tdb_paiement', id=etab.id) }}" class="btn btn-accent btn-sm">+ Déclaration</a></div>
   <div class="table-responsive">
     <table>
       <thead><tr><th>N° Décl.</th><th>Année</th><th>Trim.</th><th>Recettes HT</th><th>Taux</th><th>Principal</th><th>Pénalité</th><th>Total</th><th>Bulletin</th><th>Statut</th></tr></thead>
@@ -72,7 +72,7 @@
   <div class="modal">
     <div class="modal-header"><h3>✏️ Modifier Établissement</h3><button class="modal-close" onclick="closeModal('editEtab')">✕</button></div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('tdb_modifier', id=etab.id) }}">
+      <form method="post" action="{{ url_for('tdb.tdb_modifier', id=etab.id) }}">
         <div class="form-grid mb-3">
           <div class="form-group"><label>Nom établissement</label><input name="nom_etablissement" value="{{ etab.nom_etablissement or '' }}"></div>
           <div class="form-group"><label>Type</label>

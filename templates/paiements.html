@@ -80,7 +80,11 @@
             <td><span class="badge {% if b.statut=='paye' %}b-ok{% elif b.statut=='en_attente' %}b-warn{% else %}b-sec{% endif %}">{{ b.statut }}</span></td>
             <td>
               {% if b.statut=='en_attente' and user.peut_valider_paiement %}
-              <form method="post" action="{{ url_for('valider_bulletin', id=b.id) }}" onsubmit="return confirm('Valider ce paiement de {{ "%.2f"|format(b.montant) }} DH?')">
+              <form method="post" action="{{ url_for('valider_bulletin', id=b.id) }}"
+                data-confirm="success"
+                data-confirm-title="Valider le paiement"
+                data-confirm-msg="Confirmer la réception et validation de ce paiement ?"
+                data-confirm-detail="Bulletin : {{ b.numero_bulletin }} — Montant : {{ '%.2f'|format(b.montant) }} DH">
                 <button type="submit" class="btn btn-ok btn-xs">✅ Valider</button>
               </form>
               {% elif b.statut=='en_attente' %}

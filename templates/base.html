@@ -89,6 +89,53 @@ tbody td{padding:8px 13px;font-size:.82rem}
 .b-info{background:#d1ecf1;color:#0c5460}
 .b-sec{background:#e2e3e5;color:#383d41}
 .b-primary{background:#d0e0ff;color:var(--primary)}
+.card-border-ok{border-left:4px solid var(--ok)}
+.card-border-muted{border-left:4px solid var(--muted)}
+.row-inactive{opacity:.5}
+/* ── Confirmation Dialog ────────────────────────────────── */
+#confirm-overlay{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(10,15,30,.55);backdrop-filter:blur(4px);
+  justify-content:center;align-items:center;padding:16px;
+}
+#confirm-overlay.active{display:flex}
+#confirm-box{
+  background:var(--card);border-radius:18px;padding:0;
+  max-width:420px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.35);
+  overflow:hidden;animation:popIn .25s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn{from{opacity:0;transform:scale(.85) translateY(20px)}to{opacity:1;transform:none}}
+#confirm-header{
+  padding:22px 24px 12px;
+  display:flex;align-items:center;gap:14px;
+}
+#confirm-icon{
+  width:48px;height:48px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;flex-shrink:0;
+}
+#confirm-title{font-size:1rem;font-weight:800;color:var(--text)}
+#confirm-msg{font-size:.82rem;color:var(--muted);margin-top:3px;line-height:1.5}
+#confirm-body{padding:0 24px 20px}
+#confirm-detail{
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:10px;padding:10px 14px;font-size:.8rem;
+  color:var(--text);font-family:monospace;margin-bottom:16px;
+  display:none;
+}
+#confirm-actions{display:flex;gap:10px;justify-content:flex-end}
+#confirm-cancel-btn{
+  padding:9px 20px;border-radius:10px;border:1.5px solid var(--border);
+  background:transparent;color:var(--text);font-size:.85rem;
+  font-weight:600;cursor:pointer;transition:all .15s;
+}
+#confirm-cancel-btn:hover{background:var(--bg)}
+#confirm-ok-btn{
+  padding:9px 22px;border-radius:10px;border:none;
+  font-size:.85rem;font-weight:700;cursor:pointer;
+  transition:all .15s;min-width:100px;
+}
+#confirm-ok-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
 .alert{padding:11px 15px;border-radius:8px;font-size:.82rem;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .alert-info{background:#d1ecf1;color:#0c5460;border-left:4px solid var(--info)}
 .alert-warn,.alert-warning{background:var(--warn-bg);color:#856404;border-left:4px solid var(--warn-bd)}
@@ -151,21 +198,21 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <div class="nav-sec">Tableau de Bord</div>
     <div class="nav-item"><a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint=='index' else '' }}"><span class="ic">📊</span>Tableau de Bord</a></div>
     <div class="nav-sec">Gestion</div>
-    <div class="nav-item"><a href="{{ url_for('contribuables') }}" class="{{ 'active' if 'contribuable' in (request.endpoint or '') else '' }}"><span class="ic">👥</span>Contribuables</a></div>
+    <div class="nav-item"><a href="{{ url_for('contribuables.contribuables') }}" class="{{ 'active' if 'contribuable' in (request.endpoint or '') else '' }}"><span class="ic">👥</span>Contribuables</a></div>
     <div class="nav-item"><a href="{{ url_for('paiements') }}" class="{{ 'active' if request.endpoint=='paiements' else '' }}"><span class="ic">💳</span>Bulletins de Paiement</a></div>
     <div class="nav-item"><a href="{{ url_for('avis') }}" class="{{ 'active' if request.endpoint=='avis' else '' }}"><span class="ic">📨</span>Avis Non-Paiement</a></div>
     <div class="nav-sec">Modules Fiscaux</div>
-    <div class="nav-item"><a href="{{ url_for('tnb_liste') }}" class="{{ 'active' if 'tnb' in (request.endpoint or '') else '' }}"><span class="ic">🏗️</span>TNB — Terrains</a></div>
-    <div class="nav-item"><a href="{{ url_for('tdb_liste') }}" class="{{ 'active' if 'tdb' in (request.endpoint or '') else '' }}"><span class="ic">🍺</span>Débits de Boissons</a></div>
-    <div class="nav-item"><a href="{{ url_for('sta_liste') }}" class="{{ 'active' if 'sta' in (request.endpoint or '') else '' }}"><span class="ic">🚗</span>Stationnement TPV</a></div>
-    <div class="nav-item"><a href="{{ url_for('fou_liste') }}" class="{{ 'active' if 'fou' in (request.endpoint or '') else '' }}"><span class="ic">🔑</span>Fourrière</a></div>
-    <div class="nav-item"><a href="{{ url_for('odp_liste') }}" class="{{ 'active' if 'odp' in (request.endpoint or '') else '' }}"><span class="ic">🏪</span>Domaine Public</a></div>
-    <div class="nav-item"><a href="{{ url_for('loc_liste') }}" class="{{ 'active' if 'loc' in (request.endpoint or '') else '' }}"><span class="ic">🏢</span>Location Locaux</a></div>
-    <div class="nav-item"><a href="{{ url_for('sou_liste') }}" class="{{ 'active' if 'sou' in (request.endpoint or '') else '' }}"><span class="ic">🛒</span>Souks Communaux</a></div>
+    <div class="nav-item"><a href="{{ url_for('tnb.tnb_liste') }}" class="{{ 'active' if 'tnb' in (request.endpoint or '') else '' }}"><span class="ic">🏗️</span>TNB — Terrains</a></div>
+    <div class="nav-item"><a href="{{ url_for('tdb.tdb_liste') }}" class="{{ 'active' if 'tdb' in (request.endpoint or '') else '' }}"><span class="ic">🍺</span>Débits de Boissons</a></div>
+    <div class="nav-item"><a href="{{ url_for('sta.sta_liste') }}" class="{{ 'active' if 'sta' in (request.endpoint or '') else '' }}"><span class="ic">🚗</span>Stationnement TPV</a></div>
+    <div class="nav-item"><a href="{{ url_for('fou.fou_liste') }}" class="{{ 'active' if 'fou' in (request.endpoint or '') else '' }}"><span class="ic">🔑</span>Fourrière</a></div>
+    <div class="nav-item"><a href="{{ url_for('odp.odp_liste') }}" class="{{ 'active' if 'odp' in (request.endpoint or '') else '' }}"><span class="ic">🎪</span>Domaine Public</a></div>
+    <div class="nav-item"><a href="{{ url_for('loc.loc_liste') }}" class="{{ 'active' if 'loc' in (request.endpoint or '') else '' }}"><span class="ic">🏢</span>Location Locaux</a></div>
+    <div class="nav-item"><a href="{{ url_for('sou.sou_liste') }}" class="{{ 'active' if 'sou' in (request.endpoint or '') else '' }}"><span class="ic">🛒</span>Souks Communaux</a></div>
     <div class="nav-sec">Configuration</div>
-    <div class="nav-item"><a href="{{ url_for('rubriques') }}" class="{{ 'active' if request.endpoint=='rubriques' else '' }}"><span class="ic">📋</span>Rubriques Fiscales</a></div>
-    <div class="nav-item"><a href="{{ url_for('tarifs') }}" class="{{ 'active' if request.endpoint=='tarifs' else '' }}"><span class="ic">💰</span>Arrêté Fiscal</a></div>
-    <div class="nav-item"><a href="{{ url_for('parametres') }}" class="{{ 'active' if request.endpoint=='parametres' else '' }}"><span class="ic">⚙️</span>Paramètres Calcul</a></div>
+    <div class="nav-item"><a href="{{ url_for('config.rubriques') }}" class="{{ 'active' if 'rubrique' in (request.endpoint or '') else '' }}"><span class="ic">📋</span>Rubriques Fiscales</a></div>
+    <div class="nav-item"><a href="{{ url_for('config.arretes_fiscaux') }}" class="{{ 'active' if 'arrete' in (request.endpoint or '') else '' }}"><span class="ic">📜</span>Arrêtés Fiscaux</a></div>
+    <div class="nav-item"><a href="{{ url_for('config.parametres') }}" class="{{ 'active' if request.endpoint=='config.parametres' else '' }}"><span class="ic">⚙️</span>Paramètres Calcul</a></div>
     <div class="nav-item"><a href="{{ url_for('utilisateurs') }}" class="{{ 'active' if request.endpoint=='utilisateurs' else '' }}"><span class="ic">🔐</span>Utilisateurs & Rôles</a></div>
     <div class="nav-item"><a href="{{ url_for('communes') }}" class="{{ 'active' if request.endpoint=='communes' else '' }}"><span class="ic">🏘️</span>Communes</a></div>
     <div class="nav-sec">Session</div>
@@ -204,6 +251,128 @@ function showTab(tabId,btn){
   document.getElementById(tabId).classList.add('active')
   btn.classList.add('active')
 }
+</script>
+
+<!-- ════════ MODALE CONFIRMATION GLOBALE ════════ -->
+<div id="confirm-overlay">
+  <div id="confirm-box">
+    <div id="confirm-header">
+      <div id="confirm-icon">⚠️</div>
+      <div>
+        <div id="confirm-title">Confirmer l'action</div>
+        <div id="confirm-msg">Êtes-vous sûr de vouloir effectuer cette action ?</div>
+      </div>
+    </div>
+    <div id="confirm-body">
+      <div id="confirm-detail"></div>
+      <div id="confirm-actions">
+        <button id="confirm-cancel-btn" onclick="_confirmReject()">✕ Annuler</button>
+        <button id="confirm-ok-btn" onclick="_confirmResolve()">Confirmer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Modale confirmation globale ──────────────────────────
+let _confirmCallback = null;
+let _confirmForm     = null;
+
+const CONFIRM_TYPES = {
+  danger: {
+    icon:'🗑️', iconBg:'#fef2f2', iconColor:'#dc2626',
+    okBg:'#dc2626', okColor:'#fff', okLabel:'Supprimer'
+  },
+  warning: {
+    icon:'✏️', iconBg:'#fffbeb', iconColor:'#d97706',
+    okBg:'#d97706', okColor:'#fff', okLabel:'Modifier'
+  },
+  info: {
+    icon:'ℹ️', iconBg:'#eff6ff', iconColor:'#2563eb',
+    okBg:'#2563eb', okColor:'#fff', okLabel:'Confirmer'
+  },
+  success: {
+    icon:'✅', iconBg:'#f0fdf4', iconColor:'#16a34a',
+    okBg:'#16a34a', okColor:'#fff', okLabel:'Valider'
+  },
+};
+
+function confirmAction(opts) {
+  // opts: {title, msg, detail, type='danger', onOk, form}
+  const type = CONFIRM_TYPES[opts.type || 'danger'];
+  const icon  = document.getElementById('confirm-icon');
+  const title = document.getElementById('confirm-title');
+  const msg   = document.getElementById('confirm-msg');
+  const det   = document.getElementById('confirm-detail');
+  const okBtn = document.getElementById('confirm-ok-btn');
+
+  icon.textContent  = type.icon;
+  icon.style.background = type.iconBg;
+  icon.style.color      = type.iconColor;
+  title.textContent = opts.title || 'Confirmer l\'action';
+  msg.textContent   = opts.msg   || 'Êtes-vous sûr ?';
+  okBtn.textContent = opts.okLabel || type.okLabel;
+  okBtn.style.background = type.okBg;
+  okBtn.style.color      = type.okColor;
+
+  if (opts.detail) {
+    det.style.display = 'block';
+    det.textContent   = opts.detail;
+  } else {
+    det.style.display = 'none';
+  }
+
+  _confirmCallback = opts.onOk || null;
+  _confirmForm     = opts.form || null;
+  document.getElementById('confirm-overlay').classList.add('active');
+}
+
+function _confirmResolve() {
+  document.getElementById('confirm-overlay').classList.remove('active');
+  if (_confirmForm) {
+    _confirmForm.submit();
+  } else if (_confirmCallback) {
+    _confirmCallback();
+  }
+  _confirmCallback = null;
+  _confirmForm = null;
+}
+
+function _confirmReject() {
+  document.getElementById('confirm-overlay').classList.remove('active');
+  _confirmCallback = null;
+  _confirmForm = null;
+}
+
+// Fermer en cliquant en dehors
+document.getElementById('confirm-overlay').addEventListener('click', function(e) {
+  if (e.target === this) _confirmReject();
+});
+
+// Touche Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') _confirmReject();
+});
+
+// ── Intercepter les formulaires de suppression auto ──────
+// Tous les forms avec data-confirm seront confirmés automatiquement
+document.addEventListener('submit', function(e) {
+  const form = e.target;
+  const confirmType  = form.dataset.confirm;
+  const confirmTitle = form.dataset.confirmTitle;
+  const confirmMsg   = form.dataset.confirmMsg;
+  const confirmDet   = form.dataset.confirmDetail;
+  if (confirmType) {
+    e.preventDefault();
+    confirmAction({
+      type:    confirmType,
+      title:   confirmTitle,
+      msg:     confirmMsg,
+      detail:  confirmDet,
+      form:    form,
+    });
+  }
+}, true); // capture phase
 </script>
 {% block extra_js %}{% endblock %}
 </body>

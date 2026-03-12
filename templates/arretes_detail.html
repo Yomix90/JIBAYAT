@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% block title %}{{ arrete.numero }} — Tarifs{% endblock %}
+{% block page_title %}📜 {{ arrete.numero }} — {{ arrete.titre }}{% endblock %}
+{% block content %}
+
+<!-- ── En-tête arrêté ── -->
+<div class="card mb-3 {{ 'card-border-ok' if arrete.statut=='actif' else 'card-border-muted' }}">
+  <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <div style="font-size:.75rem;color:var(--muted);font-weight:700;text-transform:uppercase">Arrêté Fiscal</div>
+      <h2 style="font-size:1.1rem;color:var(--primary);margin:4px 0">{{ arrete.titre }}</h2>
+      <div style="font-size:.82rem;color:var(--muted)">
+        📅 Effet : <strong>{{ arrete.date_effet }}</strong>
+        {% if arrete.date_fin %} → <strong>{{ arrete.date_fin }}</strong>
+        {% else %} → <strong style="color:var(--ok)">∞ (en vigueur)</strong>{% endif %}
+        &nbsp;|&nbsp;
+        {% if arrete.statut=='actif' %}<span class="badge b-ok">✓ Actif</span>{% else %}<span class="badge b-sec">Remplacé</span>{% endif %}
+        {% if arrete.notes %}&nbsp;|&nbsp; 📝 {{ arrete.notes }}{% endif %}
+      </div>
+    </div>
+    <a href="{{ url_for('config.arretes_fiscaux') }}" class="btn btn-outline btn-sm">← Retour</a>
+  </div>
+</div>
+
+<!-- ── Tarifs groupés par module (repliables) ── -->
+{% set current_mod = namespace(val='', rub='', rub_code='', rub_id=0) %}
+
+{% if tarifs %}
+{% for t in tarifs %}
+  {% if t.module != current_mod.val %}
+    {% if not loop.first %}</tbody></table></div></div>{% endif %}
+    {% set current_mod.val = t.module %}
+    {% set current_mod.rub = t.rub_libelle %}
+    {% set current_mod.rub_code = t.rub_code %}
+    {% set current_mod.rub_id = t.rubrique_id %}
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header" style="cursor:pointer" onclick="toggleSection('sec-{{ t.module }}')">
+        <h3>
+          {% if t.module=='TNB' %}🏗️{% elif t.module=='DEBITS_BOISSONS' %}🍺{% elif t.module=='STATIONNEMENT' %}🚗{% elif t.module=='FOURRIERE' %}🔑{% elif t.module=='OCCUPATION_DOMAINE' %}🏪{% elif t.module=='LOCATION_LOCAUX' %}🏢{% elif t.module=='AFFERMAGE_SOUKS' %}🛒{% else %}📋{% endif %}
+          {{ t.rub_libelle }}
+        </h3>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge b-primary" style="font-family:monospace">{{ t.rub_code }}</span>
+          {% if user.peut_config %}
+        <button class="btn btn-ok btn-xs" onclick="event.stopPropagation();openModal('modal-add-{{ t.module }}-{{ t.rubrique_id }}')">➕ Tarif</button>
+          {% endif %}
+          <span id="chevron-{{ t.module }}" style="font-size:1.1rem;transition:.2s">▼</span>
+        </div>
+      </div>
+      <div id="sec-{{ t.module }}" class="table-responsive">
+        <table><thead><tr>
+          <th>Code Auto</th><th>Libellé</th><th>Valeur</th><th>Unité</th>
+          <th>Date Début</th><th>Date Fin</th>
+          {% if user.peut_config %}<th>Actions</th>{% endif %}
+        </tr></thead><tbody>
+  {% endif %}
+  <tr {% if t.date_fin %}style="opacity:.6"{% endif %}>
+    <td><code style="color:var(--primary);font-size:.8rem">{{ t.code_tarif or '—' }}</code></td>
+    <td>{{ t.libelle }}</td>
+    <td><strong style="font-size:1rem;color:var(--primary)">{{ t.valeur }}</strong></td>
+    <td>{{ t.unite }}</td>
+    <td>{{ t.date_debut }}</td>
+    <td>{{ t.date_fin or '<span style="color:var(--ok)">∞</span>'|safe }}</td>
+    {% if user.peut_config %}<td>
+      <div class="df gap-2">
+        <button class="btn btn-outline btn-xs" onclick="openModal('modal-edit-tarif-{{ t.id }}')">✏️</button>
+        <form method="post" action="{{ url_for('config.supprimer_tarif', id=t.id) }}" data-confirm="danger" data-confirm-title="Confirmer la suppression" data-confirm-msg="Cette action est irréversible. Voulez-vous vraiment supprimer cet élément ?">
+          <input type="hidden" name="arrete_id" value="{{ arrete.id }}">
+          <button class="btn btn-danger btn-xs">🗑️</button>
+        </form>
+      </div>
+    </td>{% endif %}
+  </tr>
+  <!-- Modal modifier tarif -->
+  <div class="modal-overlay" id="modal-edit-tarif-{{ t.id }}">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header"><h3>✏️ Modifier Tarif</h3><button class="modal-close" onclick="closeModal('modal-edit-tarif-{{ t.id }}')">✕</button></div>
+      <form method="post" action="{{ url_for('config.modifier_tarif', id=t.id) }}">
+        <input type="hidden" name="arrete_id" value="{{ arrete.id }}">
+        <div class="modal-body">
+          <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px">
+            📌 Libellé : <strong>{{ t.libelle }}</strong><br>
+            ⚠️ Si vous changez la valeur, l'historique est conservé en base.
+          </p>
+          <div class="form-grid">
+            <div class="form-group"><label>Nouvelle Valeur *</label><input type="number" name="valeur" step="0.01" value="{{ t.valeur }}" required></div>
+            <div class="form-group"><label>Unité</label>
+              <select name="unite">
+                {% for u in ['DH','DH/m²','%','DH/an','DH/jour','DH/m²/an','DH/m²/mois'] %}
+                <option value="{{ u }}" {{ 'selected' if u==t.unite }}>{{ u }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group"><label>Date Fin <small>(laisser vide = ∞)</small></label><input type="date" name="date_fin" value="{{ t.date_fin or '' }}"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modal-edit-tarif-{{ t.id }}')">Annuler</button>
+          <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endfor %}
+{% if tarifs %}</tbody></table></div></div>{% endif %}
+{% endif %}
+
+<!-- ══ Panneau rubriques disponibles (toujours visible si peut_config) ══ -->
+{% if user.peut_config %}
+<div class="card" style="margin-top:16px">
+  <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+    <h3>📋 Ajouter des Tarifs par Rubrique</h3>
+    <span style="font-size:.75rem;color:var(--muted)">Cliquez sur une rubrique pour définir son tarif</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;padding:14px">
+    {% for rub in rubriques %}
+    <div style="border:1.5px solid var(--border);border-radius:10px;padding:12px;background:var(--bg);cursor:pointer;transition:all .2s"
+         onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)'"
+         onmouseout="this.style.borderColor='var(--border)';this.style.transform=''"
+         onclick="openModal('modal-add-{{ rub.module }}-{{ rub.id }}')">
+      <div style="font-size:1.4rem;margin-bottom:6px">
+        {% if rub.module=='TNB' %}🏗️{% elif rub.module=='DEBITS_BOISSONS' %}🍺{% elif rub.module=='STATIONNEMENT' %}🚗{% elif rub.module=='FOURRIERE' %}🔑{% elif rub.module=='OCCUPATION_DOMAINE' %}🏪{% elif rub.module=='LOCATION_LOCAUX' %}🏢{% elif rub.module=='AFFERMAGE_SOUKS' %}🛒{% else %}📋{% endif %}
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);font-family:monospace">{{ rub.code }}</div>
+      <div style="font-size:.8rem;font-weight:700;color:var(--primary);margin-top:2px">{{ rub.module }}</div>
+      <div style="font-size:.72rem;color:var(--text);margin-top:2px;line-height:1.3">{{ rub.libelle[:55] }}{% if rub.libelle|length > 55 %}…{% endif %}</div>
+      <div style="margin-top:8px">
+        <span class="btn btn-ok btn-xs" style="pointer-events:none">➕ Ajouter Tarif</span>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-state" style="grid-column:1/-1">
+      <span class="ei">📋</span>Aucune rubrique active.
+      <a href="{{ url_for('config.rubriques') }}" class="btn btn-primary btn-sm" style="margin-top:8px">Gérer les rubriques</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ── Modals Ajouter tarif par module ── -->
+{% if user.peut_config %}
+{% for rub in rubriques %}
+<div class="modal-overlay" id="modal-add-{{ rub.module }}-{{ rub.id }}">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h3>➕ Nouveau Tarif — <span style="color:var(--accent)">{{ rub.module }}</span></h3>
+      <button class="modal-close" onclick="closeModal('modal-add-{{ rub.module }}-{{ rub.id }}')">✕</button>
+    </div>
+    <form method="post" action="{{ url_for('config.ajouter_tarif') }}">
+      <input type="hidden" name="rubrique_id" value="{{ rub.id }}">
+      <input type="hidden" name="rub_code" value="{{ rub.code }}">
+      <input type="hidden" name="arrete_id" value="{{ arrete.id }}">
+      <div class="modal-body">
+        <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:.78rem;margin-bottom:14px;border:1px solid var(--border)">
+          <div style="font-weight:700;color:var(--primary)">{{ rub.libelle }}</div>
+          <div style="color:var(--muted);font-family:monospace;font-size:.72rem">Code budgétaire : {{ rub.code }}</div>
+        </div>
+        <div class="alert alert-info" style="margin-bottom:12px;font-size:.8rem">
+          💡 Le <strong>code tarif</strong> est généré automatiquement à partir du libellé.
+        </div>
+        <div class="form-group mb-3">
+          <label>Libellé du tarif *</label>
+          <input name="libelle" required placeholder="ex: Zone A - Bien équipée, Café 1ère catégorie...">
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label>Valeur *</label><input type="number" name="valeur" step="0.01" required placeholder="0.00"></div>
+          <div class="form-group"><label>Unité</label>
+            <select name="unite">
+              {% for u in ['DH','DH/m²','%','DH/an','DH/jour','DH/m²/an','DH/m²/mois'] %}
+              <option value="{{ u }}">{{ u }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date Début * <small>(date d'effet)</small></label>
+            <input type="date" name="date_debut" value="{{ arrete.date_effet }}" required>
+          </div>
+          <div class="form-group">
+            <label>Date Fin <small>(vide = illimité ∞)</small></label>
+            <input type="date" name="date_fin">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-add-{{ rub.module }}-{{ rub.id }}')">Annuler</button>
+        <button type="submit" class="btn btn-primary">💾 Ajouter le Tarif</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+
+<!-- ── Historique des tarifs ── -->
+{% if historique %}
+<div class="card" style="margin-top:20px">
+  <div class="card-header" style="cursor:pointer" onclick="toggleSection('sec-historique')">
+    <h3>📊 Historique des Tarifs Antérieurs</h3>
+    <span id="chevron-historique">▼</span>
+  </div>
+  <div id="sec-historique" class="table-responsive">
+    <table>
+      <thead><tr>
+        <th>Arrêté</th><th>Date Effet</th><th>Module</th><th>Libellé</th>
+        <th>Valeur</th><th>Période</th>
+      </tr></thead>
+      <tbody>
+        {% for h in historique %}
+        <tr style="opacity:.7">
+          <td><code style="font-size:.75rem">{{ h.arrete_num }}</code></td>
+          <td>{{ h.date_effet }}</td>
+          <td><span class="badge b-primary" style="font-size:.6rem">{{ h.module }}</span></td>
+          <td>{{ h.libelle }}</td>
+          <td><strong>{{ h.valeur }}</strong> {{ h.unite }}</td>
+          <td style="font-size:.78rem;color:var(--muted)">
+            {{ h.date_debut }} → {{ h.date_fin or '∞' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+{% block extra_js %}
+<script>
+function toggleSection(id) {
+  const el = document.getElementById(id);
+  const ch = document.getElementById('chevron-' + id.replace('sec-',''));
+  if (!el) return;
+  const hidden = el.style.display === 'none';
+  el.style.display = hidden ? '' : 'none';
+  if (ch) ch.textContent = hidden ? '▼' : '▶';
+}
+</script>
+{% endblock %}

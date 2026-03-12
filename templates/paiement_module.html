@@ -15,13 +15,13 @@
 {% endblock %}
 {% block content %}
 <div class="df gap-2 mb-3">
-  {% if module=='TNB' %}<a href="{{ url_for('tnb_liste') }}" class="btn btn-outline btn-sm">← Retour TNB</a>
-  {% elif module=='DEBITS_BOISSONS' %}<a href="{{ url_for('tdb_liste') }}" class="btn btn-outline btn-sm">← Retour Débits</a>
-  {% elif module=='STATIONNEMENT' %}<a href="{{ url_for('sta_liste') }}" class="btn btn-outline btn-sm">← Retour Stationnement</a>
-  {% elif module=='FOURRIERE' %}<a href="{{ url_for('fou_liste') }}" class="btn btn-outline btn-sm">← Retour Fourrière</a>
-  {% elif module=='OCCUPATION_DOMAINE' %}<a href="{{ url_for('odp_liste') }}" class="btn btn-outline btn-sm">← Retour Domaine Public</a>
-  {% elif module=='LOCATION_LOCAUX' %}<a href="{{ url_for('loc_liste') }}" class="btn btn-outline btn-sm">← Retour Location</a>
-  {% elif module=='AFFERMAGE_SOUKS' %}<a href="{{ url_for('sou_liste') }}" class="btn btn-outline btn-sm">← Retour Souks</a>
+  {% if module=='TNB' %}<a href="{{ url_for('tnb.tnb_liste') }}" class="btn btn-outline btn-sm">← Retour TNB</a>
+  {% elif module=='DEBITS_BOISSONS' %}<a href="{{ url_for('tdb.tdb_liste') }}" class="btn btn-outline btn-sm">← Retour Débits</a>
+  {% elif module=='STATIONNEMENT' %}<a href="{{ url_for('sta.sta_liste') }}" class="btn btn-outline btn-sm">← Retour Stationnement</a>
+  {% elif module=='FOURRIERE' %}<a href="{{ url_for('fou.fou_liste') }}" class="btn btn-outline btn-sm">← Retour Fourrière</a>
+  {% elif module=='OCCUPATION_DOMAINE' %}<a href="{{ url_for('odp.odp_liste') }}" class="btn btn-outline btn-sm">← Retour Domaine Public</a>
+  {% elif module=='LOCATION_LOCAUX' %}<a href="{{ url_for('loc.loc_liste') }}" class="btn btn-outline btn-sm">← Retour Location</a>
+  {% elif module=='AFFERMAGE_SOUKS' %}<a href="{{ url_for('sou.sou_liste') }}" class="btn btn-outline btn-sm">← Retour Souks</a>
   {% endif %}
   <a href="{{ url_for('export_excel', module=module) }}" class="btn btn-success btn-sm">📊 Excel</a>
 </div>

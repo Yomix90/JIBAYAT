@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block title %}Arrêtés Fiscaux{% endblock %}
+{% block page_title %}📜 Arrêtés Fiscaux — Gestion Fiscale{% endblock %}
+{% block content %}
+
+<div class="alert alert-info">
+  📜 Les arrêtés fiscaux définissent les tarifs applicables à partir d'une date d'effet.
+  Les calculs utilisent automatiquement le tarif en vigueur à chaque déclaration.
+</div>
+
+<!-- ══ Ligne supérieure : Nouvel arrêté + Rubriques ══════════════ -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;margin-bottom:18px">
+
+  {% if user.peut_config %}
+  <!-- ── Créer un nouvel arrêté ──────────────────────────────── -->
+  <div class="card">
+    <div class="card-header"><h3>📜 Nouvel Arrêté Fiscal</h3></div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('config.creer_arrete') }}">
+        <div class="form-group mb-3">
+          <label>Titre de l'arrêté *</label>
+          <input name="titre" required placeholder="ex: Arrêté Fiscal 2025">
+        </div>
+        <div class="form-group mb-3">
+          <label>Date d'effet * <small style="color:var(--muted)">(à partir de cette date)</small></label>
+          <input type="date" name="date_effet" required value="{{ today }}">
+        </div>
+        <div class="form-group mb-3">
+          <label>Notes / Références</label>
+          <textarea name="notes" rows="2" placeholder="N° délibération, références légales..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">📜 Créer l'Arrêté</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Rubriques Fiscales ──────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+      <h3>📋 Rubriques Fiscales ({{ rubriques|length }})</h3>
+      {% if user.peut_config %}
+      <button class="btn btn-ok btn-sm" onclick="openModal('modal-add-rub-quick')">➕ Nouvelle Rubrique</button>
+      {% endif %}
+    </div>
+    <div style="overflow-y:auto;max-height:280px">
+      <table>
+        <thead><tr>
+          <th>Code</th><th>Module</th><th>Libellé</th><th>Statut</th><th></th>
+        </tr></thead>
+        <tbody>
+          {% for r in rubriques %}
+          <tr class="{{ 'row-inactive' if not r.actif else '' }}">
+            <td><code style="font-size:.72rem;color:var(--primary)">{{ r.code }}</code></td>
+            <td><span class="badge b-info" style="font-size:.6rem">{{ r.module }}</span></td>
+            <td style="font-size:.8rem">{{ r.libelle }}</td>
+            <td>
+              {% if r.actif %}
+              <span class="badge b-ok" style="font-size:.6rem">Actif</span>
+              {% else %}
+              <span class="badge b-sec" style="font-size:.6rem">Inactif</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if arretes %}
+              <a href="{{ url_for('config.arretes_detail', id=arretes[0].id) }}#rub-{{ r.module }}"
+                 class="btn btn-accent btn-xs" title="Voir les tarifs dans l'arrêté actif">
+                💰 Tarifs
+              </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="empty-state"><span class="ei">📋</span>Aucune rubrique</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:10px 16px;border-top:1px solid var(--border);text-align:right">
+      <a href="{{ url_for('config.rubriques') }}" class="btn btn-outline btn-sm">📋 Gérer toutes les rubriques →</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ Liste des arrêtés ══════════════════════════════════════ -->
+<div class="card">
+  <div class="card-header"><h3>📚 Historique des Arrêtés ({{ arretes|length }})</h3></div>
+  <div class="table-responsive">
+    <table>
+      <thead><tr>
+        <th>N° Arrêté</th>
+        <th>Titre</th>
+        <th>Date d'Effet</th>
+        <th>Date Fin</th>
+        <th>Statut</th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody>
+        {% for a in arretes %}
+        <tr>
+          <td><strong style="color:var(--primary);font-family:monospace">{{ a.numero }}</strong></td>
+          <td>
+            <div style="font-weight:600;font-size:.85rem">{{ a.titre }}</div>
+            {% if a.notes %}<div style="font-size:.7rem;color:var(--muted)">{{ a.notes }}</div>{% endif %}
+          </td>
+          <td><strong>{{ a.date_effet }}</strong></td>
+          <td style="color:var(--muted)">{{ a.date_fin or '∞ en cours' }}</td>
+          <td>
+            {% if a.statut == 'actif' %}
+            <span class="badge b-ok">✓ Actif</span>
+            {% else %}
+            <span class="badge b-sec">🔄 Remplacé</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('config.arretes_detail', id=a.id) }}" class="btn btn-primary btn-xs">
+              📋 Détails / Tarifs
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty-state"><span class="ei">📜</span>Aucun arrêté fiscal</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ MODAL : Nouvelle rubrique rapide ═══════════════════════ -->
+{% if user.peut_config %}
+<div class="modal-overlay" id="modal-add-rub-quick">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h3>📋 Nouvelle Rubrique Fiscale</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-rub-quick')">✕</button>
+    </div>
+    <form method="post" action="{{ url_for('config.ajouter_rubrique') }}">
+      <div class="modal-body">
+        <div class="alert alert-info" style="font-size:.78rem;margin-bottom:14px">
+          💡 Utilisez les codes budgétaires officiels (ex: <code>30101014</code> pour TNB)
+        </div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+          <div class="form-group">
+            <label>Code Budgétaire *</label>
+            <input name="code" required placeholder="ex: 40101011"
+                   pattern="\d{8}" title="8 chiffres" style="font-family:monospace">
+          </div>
+          <div class="form-group">
+            <label>Module *</label>
+            <select name="module" required>
+              <option value="">— Sélectionner —</option>
+              <option value="TNB">TNB — Terrains Non Bâtis</option>
+              <option value="DEBITS_BOISSONS">Débits de Boissons</option>
+              <option value="TRANSPORT_VOYAGEURS">Transport Public Voyageurs</option>
+              <option value="STATIONNEMENT">Stationnement TPV</option>
+              <option value="OCCUPATION_DOMAINE">Occupation Domaine Public</option>
+              <option value="FOURRIERE">Fourrière</option>
+              <option value="LOCATION_LOCAUX">Location Locaux Commerciaux</option>
+              <option value="AFFERMAGE_SOUKS">Affermage Souks Communaux</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group mb-3">
+          <label>Libellé Français *</label>
+          <input name="libelle" required placeholder="ex: Taxe sur les Débits de Boissons">
+        </div>
+        <div class="form-group mb-3">
+          <label>Libellé Arabe <small style="color:var(--muted)">(optionnel)</small></label>
+          <input name="libelle_ar" dir="rtl" placeholder="..." style="font-family:'Cairo',sans-serif">
+        </div>
+        <div class="form-group">
+          <label>Description / Base légale</label>
+          <textarea name="description" rows="2" placeholder="ex: Art. 46 Loi 47-06..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-add-rub-quick')">Annuler</button>
+        <button type="submit" class="btn btn-ok">📋 Ajouter la Rubrique</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+

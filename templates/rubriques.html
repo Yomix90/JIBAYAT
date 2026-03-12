@@ -2,62 +2,135 @@
 {% block title %}Rubriques Fiscales{% endblock %}
 {% block page_title %}📋 Rubriques Fiscales{% endblock %}
 {% block content %}
-<div class="alert alert-info">ℹ️ Les rubriques fiscales correspondent aux 8 modules prévus par la Loi 47-06. Elles sont pré-configurées par défaut. Vous pouvez en ajouter de nouvelles spécifiques à votre commune.</div>
-<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:18px;align-items:start">
-  {% if user.peut_config %}
-  <div class="card">
-    <div class="card-header"><h3>➕ Ajouter Rubrique</h3></div>
-    <div class="card-body">
-      <form method="post" action="{{ url_for('ajouter_rubrique') }}">
-        <div class="form-group mb-3"><label>Code *</label><input name="code" required placeholder="ex: TNB-002"></div>
-        <div class="form-group mb-3"><label>Libellé Français *</label><input name="libelle" required></div>
-        <div class="form-group mb-3"><label>Libellé العربية</label><input name="libelle_ar" dir="rtl"></div>
-        <div class="form-group mb-3">
-          <label>Module *</label>
-          <select name="module" required>
-            <option value="TNB">TNB — Terrains Urbains Non Bâtis</option>
-            <option value="DEBITS_BOISSONS">Taxe Débits de Boissons</option>
-            <option value="TRANSPORT_VOYAGEURS">Transport Public Voyageurs</option>
-            <option value="STATIONNEMENT">Droit de Stationnement TPV</option>
-            <option value="OCCUPATION_DOMAINE">Occupation Domaine Public</option>
-            <option value="FOURRIERE">Droits de Fourrière</option>
-            <option value="LOCATION_LOCAUX">Location Locaux Commerciaux</option>
-            <option value="AFFERMAGE_SOUKS">Affermage Souks Communaux</option>
-          </select>
-        </div>
-        <div class="form-group mb-3"><label>Description</label><textarea name="description" rows="2"></textarea></div>
-        <div class="form-actions"><button type="submit" class="btn btn-primary">💾 Ajouter</button></div>
-      </form>
-    </div>
+<div class="alert alert-info">ℹ️ Les rubriques fiscales correspondent aux chapitres budgétaires officiels (Loi 47-06). Les codes sont les codes budgétaires réglementaires.</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>Rubriques Loi 47-06 ({{ items|length }})</h3>
+    {% if user.peut_config %}
+    <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-rub')">➕ Ajouter</button>
+    {% endif %}
   </div>
-  {% endif %}
-  <div class="card">
-    <div class="card-header"><h3>Rubriques Loi 47-06 ({{ items|length }})</h3></div>
-    <div class="table-responsive">
-      <table>
-        <thead><tr><th>Code</th><th>Libellé Français</th><th>بالعربية</th><th>Module</th><th>Commune</th>{% if user.peut_config %}<th>Actions</th>{% endif %}</tr></thead>
-        <tbody>
-          {% for r in items %}
-          <tr>
-            <td><strong style="color:var(--primary)">{{ r.code }}</strong></td>
-            <td><strong>{{ r.libelle }}</strong></td>
-            <td dir="rtl" style="text-align:right;font-size:.82rem">{{ r.libelle_ar or '—' }}</td>
-            <td><span class="badge b-primary" style="font-size:.62rem">{{ r.module }}</span></td>
-            <td style="font-size:.78rem">{{ r.commune_nom or 'Toutes' }}</td>
-            {% if user.peut_config %}<td>
-              {% if user.peut_supprimer %}
-              <form method="post" action="{{ url_for('supprimer_rubrique', id=r.id) }}" onsubmit="return confirm('Supprimer?')">
-                <button type="submit" class="btn btn-danger btn-xs">🗑️</button>
+  <div class="table-responsive">
+    <table>
+      <thead><tr>
+        <th>Code Budgétaire</th>
+        <th>Libellé Français</th>
+        <th>بالعربية</th>
+        <th>Module</th>
+        <th>Statut</th>
+        {% if user.peut_config %}<th>Actions</th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for r in items %}
+        <tr class="{{ 'row-inactive' if not r.actif else '' }}">
+          <td>
+            <strong style="color:var(--primary);font-family:monospace;font-size:.9rem">{{ r.code }}</strong>
+          </td>
+          <td><strong>{{ r.libelle }}</strong></td>
+          <td dir="rtl" style="text-align:right;font-size:.82rem;font-family:'Cairo',sans-serif">{{ r.libelle_ar or '—' }}</td>
+          <td><span class="badge b-primary" style="font-size:.62rem">{{ r.module }}</span></td>
+          <td>
+            {% if r.actif %}
+            <span class="badge b-ok">✓ Actif</span>
+            {% else %}
+            <span class="badge b-sec">⏸ Inactif</span>
+            {% endif %}
+          </td>
+          {% if user.peut_config %}
+          <td>
+            <div class="df gap-2">
+              <button class="btn btn-outline btn-xs" onclick="openModal('modal-mod-{{ r.id }}')">✏️</button>
+              <form method="post" action="{{ url_for('config.toggle_rubrique', id=r.id) }}"
+                data-confirm="warning"
+                data-confirm-title="{{ 'Désactiver' if r.actif else 'Activer' }} la rubrique"
+                data-confirm-msg="Voulez-vous {{ 'désactiver' if r.actif else 'activer' }} la rubrique '{{ r.libelle }}' ?"
+                data-confirm-detail="Code : {{ r.code }}">
+                <button type="submit" class="btn btn-xs {{ 'btn-warn' if r.actif else 'btn-ok' }}">
+                  {{ '⏸ Désact.' if r.actif else '▶ Activer' }}
+                </button>
               </form>
-              {% endif %}
-            </td>{% endif %}
-          </tr>
-          {% else %}
-          <tr><td colspan="6" class="empty-state">Aucune rubrique</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+
+        {# Modal modifier #}
+        {% if user.peut_config %}
+        <div class="modal-overlay" id="modal-mod-{{ r.id }}">
+          <div class="modal" style="max-width:500px">
+            <div class="modal-header">
+              <h3>✏️ Modifier — {{ r.code }}</h3>
+              <button class="modal-close" onclick="closeModal('modal-mod-{{ r.id }}')">✕</button>
+            </div>
+            <form method="post" action="{{ url_for('config.modifier_rubrique', id=r.id) }}">
+              <div class="modal-body">
+                <div class="form-group mb-3">
+                  <label>Libellé Français *</label>
+                  <input name="libelle" value="{{ r.libelle }}" required>
+                </div>
+                <div class="form-group mb-3">
+                  <label>Libellé العربية</label>
+                  <input name="libelle_ar" value="{{ r.libelle_ar or '' }}" dir="rtl">
+                </div>
+                <div class="form-group mb-3">
+                  <label>Description</label>
+                  <textarea name="description" rows="2">{{ r.description or '' }}</textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-mod-{{ r.id }}')">Annuler</button>
+                <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <tr><td colspan="6" class="empty-state"><span class="ei">📋</span>Aucune rubrique</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
+
+{# Modal Ajouter #}
+{% if user.peut_config %}
+<div class="modal-overlay" id="modal-add-rub">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h3>➕ Nouvelle Rubrique Fiscale</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-rub')">✕</button>
+    </div>
+    <form method="post" action="{{ url_for('config.ajouter_rubrique') }}">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Code Budgétaire *</label><input name="code" required placeholder="ex: 30101014"></div>
+          <div class="form-group">
+            <label>Module *</label>
+            <select name="module" required>
+              <option value="TNB">TNB — Terrains Urbains Non Bâtis</option>
+              <option value="DEBITS_BOISSONS">Taxe Débits de Boissons</option>
+              <option value="TRANSPORT_VOYAGEURS">Transport Public Voyageurs</option>
+              <option value="STATIONNEMENT">Droit de Stationnement TPV</option>
+              <option value="OCCUPATION_DOMAINE">Occupation Domaine Public</option>
+              <option value="FOURRIERE">Droits de Fourrière</option>
+              <option value="LOCATION_LOCAUX">Location Locaux Commerciaux</option>
+              <option value="AFFERMAGE_SOUKS">Affermage Souks Communaux</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group mb-3"><label>Libellé Français *</label><input name="libelle" required placeholder="Intitulé officiel"></div>
+        <div class="form-group mb-3"><label>Libellé العربية</label><input name="libelle_ar" dir="rtl" placeholder="التسمية بالعربية"></div>
+        <div class="form-group mb-3"><label>Description</label><textarea name="description" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-add-rub')">Annuler</button>
+        <button type="submit" class="btn btn-primary">💾 Ajouter</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

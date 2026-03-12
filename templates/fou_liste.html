@@ -11,7 +11,7 @@
     <form method="get" style="display:flex;gap:8px;flex:1">
       <input name="q" value="{{ q }}" placeholder="Immatriculation, N° dossier...">
       <button type="submit" class="btn btn-primary btn-sm">🔍</button>
-      {% if q %}<a href="{{ url_for('fou_liste') }}" class="btn btn-outline btn-sm">✕</a>{% endif %}
+      {% if q %}<a href="{{ url_for('fou.fou_liste') }}" class="btn btn-outline btn-sm">✕</a>{% endif %}
     </form>
   </div>
   <div class="table-responsive">
@@ -29,8 +29,8 @@
           <td><span class="badge {{ 'b-danger' if d.statut=='en_fourriere' else 'b-ok' }}">{{ d.statut }}</span></td>
           <td>
             <div class="df gap-2">
-              <a href="{{ url_for('fou_detail', id=d.id) }}" class="btn btn-primary btn-xs">🔍</a>
-              <a href="{{ url_for('fou_paiement', id=d.id) }}" class="btn btn-accent btn-xs">💳</a>
+              <a href="{{ url_for('fou.fou_detail', id=d.id) }}" class="btn btn-primary btn-xs">🔍</a>
+              <a href="{{ url_for('fou.fou_paiement', id=d.id) }}" class="btn btn-accent btn-xs">💳</a>
             </div>
           </td>
         </tr>
@@ -45,7 +45,7 @@
   <div class="modal">
     <div class="modal-header"><h3>🔑 Nouveau Dossier Fourrière</h3><button class="modal-close" onclick="closeModal('addFou')">✕</button></div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('fou_ajouter') }}">
+      <form method="post" action="{{ url_for('fou.fou_ajouter') }}">
         <div class="form-group mb-3"><label>Propriétaire</label>
           <select name="contribuable_id"><option value="">— Inconnu / À identifier —</option>
             {% for c in contribuables %}<option value="{{ c.id }}">{{ c.numero }} — {{ c.nom }} {{ c.prenom or c.raison_sociale or '' }}</option>{% endfor %}

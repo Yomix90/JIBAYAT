@@ -21,8 +21,8 @@
           <td><strong>{{ item.redevance_annuelle or '—' }} DH</strong></td>
           <td><span class="badge {{ 'b-ok' if item.statut=='actif' else 'b-danger' }}">{{ item.statut }}</span></td>
           <td><div class="df gap-2">
-            <a href="{{ url_for('sou_detail', id=item.id) }}" class="btn btn-primary btn-xs">🔍</a>
-            <a href="{{ url_for('sou_paiement', id=item.id) }}" class="btn btn-accent btn-xs">💳</a>
+            <a href="{{ url_for('sou.sou_detail', id=item.id) }}" class="btn btn-primary btn-xs">🔍</a>
+            <a href="{{ url_for('sou.sou_paiement', id=item.id) }}" class="btn btn-accent btn-xs">💳</a>
           </div></td>
         </tr>
         {% else %}
@@ -36,7 +36,7 @@
   <div class="modal">
     <div class="modal-header"><h3>🛒 Nouvel Affermage Souk</h3><button class="modal-close" onclick="closeModal('addSou')">✕</button></div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('sou_ajouter') }}">
+      <form method="post" action="{{ url_for('sou.sou_ajouter') }}">
         <div class="form-group mb-3"><label>Fermier (Contribuable) *</label>
           <select name="contribuable_id" required><option value="">— Sélectionner —</option>
             {% for c in contribuables %}<option value="{{ c.id }}">{{ c.numero }} — {{ c.nom }} {{ c.prenom or c.raison_sociale or '' }}</option>{% endfor %}

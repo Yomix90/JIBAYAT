@@ -3,8 +3,8 @@
 {% block page_title %}🚗 Véhicule — {{ vehicule.immatriculation }}{% endblock %}
 {% block content %}
 <div class="df gap-2 mb-3">
-  <a href="{{ url_for('sta_liste') }}" class="btn btn-outline btn-sm">← Liste</a>
-  <a href="{{ url_for('sta_paiement', id=vehicule.id) }}" class="btn btn-accent">💳 Paiement Annuel</a>
+  <a href="{{ url_for('sta.sta_liste') }}" class="btn btn-outline btn-sm">← Liste</a>
+  <a href="{{ url_for('sta.sta_paiement', id=vehicule.id) }}" class="btn btn-accent">💳 Paiement Annuel</a>
   <button onclick="openModal('editVeh')" class="btn btn-primary btn-sm">✏️ Modifier</button>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -34,14 +34,14 @@
       {% if annees_manquantes %}
       <div style="margin-top:12px;background:var(--warn-bg);border-radius:8px;padding:10px;border-left:4px solid var(--warn-bd)">
         <div style="font-size:.72rem;font-weight:700;color:#856404">⚠️ Années impayées: {% for a in annees_manquantes %}<span class="badge b-warn">{{ a }}</span> {% endfor %}</div>
-        <a href="{{ url_for('sta_paiement', id=vehicule.id) }}" class="btn btn-accent btn-xs mt-2">Régulariser →</a>
+        <a href="{{ url_for('sta.sta_paiement', id=vehicule.id) }}" class="btn btn-accent btn-xs mt-2">Régulariser →</a>
       </div>
       {% endif %}
     </div>
   </div>
 </div>
 <div class="card">
-  <div class="card-header"><h3>📄 Historique Paiements Annuels</h3><a href="{{ url_for('sta_paiement', id=vehicule.id) }}" class="btn btn-accent btn-sm">+ Paiement</a></div>
+  <div class="card-header"><h3>📄 Historique Paiements Annuels</h3><a href="{{ url_for('sta.sta_paiement', id=vehicule.id) }}" class="btn btn-accent btn-sm">+ Paiement</a></div>
   <div class="table-responsive">
     <table>
       <thead><tr><th>N° Décl.</th><th>Année</th><th>Montant</th><th>Pénalité</th><th>Total</th><th>Bulletin</th><th>Statut</th></tr></thead>
@@ -67,7 +67,7 @@
   <div class="modal">
     <div class="modal-header"><h3>✏️ Modifier Véhicule</h3><button class="modal-close" onclick="closeModal('editVeh')">✕</button></div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('sta_modifier', id=vehicule.id) }}">
+      <form method="post" action="{{ url_for('sta.sta_modifier', id=vehicule.id) }}">
         <div class="form-grid mb-3">
           <div class="form-group"><label>Immatriculation</label><input name="immatriculation" value="{{ vehicule.immatriculation or '' }}"></div>
           <div class="form-group"><label>Type véhicule</label>

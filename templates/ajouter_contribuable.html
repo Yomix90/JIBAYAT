@@ -5,7 +5,7 @@
 <div class="card" style="max-width:900px;margin:0 auto">
   <div class="card-header">
     <h3>Enregistrer un Contribuable</h3>
-    <a href="{{ url_for('contribuables') }}" class="btn btn-outline btn-sm">← Retour</a>
+    <a href="{{ url_for('contribuables.contribuables') }}" class="btn btn-outline btn-sm">← Retour</a>
   </div>
   <div class="card-body">
     <form method="post">
@@ -51,16 +51,27 @@
       </div>
 
       <hr>
-      <!-- Identifiants -->
-      <div style="font-size:.72rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Identifiants Fiscaux</div>
+      <!-- Identifiants Uniques -->
+      <div style="font-size:.72rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <span style="background:var(--primary);color:#fff;padding:2px 8px;border-radius:4px">🔑 Identifiants Uniques</span>
+        <span style="font-size:.66rem;color:var(--muted);font-weight:400;text-transform:none">Ces champs servent d'identifiants principaux du contribuable</span>
+      </div>
       <div class="form-grid mb-3">
-        <div class="form-group"><label>CIN</label><input name="cin" placeholder="AB123456"></div>
-        <div class="form-group"><label>ICE (Personnes Morales)</label><input name="ice" placeholder="001234567000012"></div>
-        <div class="form-group"><label>RC</label><input name="rc" placeholder="N° Registre Commerce"></div>
+        <div class="form-group">
+          <label>CIN <span style="color:var(--danger)">*</span> <span style="font-size:.65rem;color:var(--muted);font-weight:400">(Personne physique)</span></label>
+          <input name="cin" placeholder="AB123456" style="border-color:var(--primary)">
+        </div>
+        <div class="form-group">
+          <label>ICE <span style="font-size:.65rem;color:var(--muted);font-weight:400">(Identifiant Commun Entreprise)</span></label>
+          <input name="ice" placeholder="001234567000012">
+        </div>
+        <div class="form-group">
+          <label>RC <span style="font-size:.65rem;color:var(--muted);font-weight:400">(Registre de Commerce)</span></label>
+          <input name="rc" placeholder="N° Registre Commerce">
+        </div>
       </div>
 
       <hr>
-      <!-- Coordonnées -->
       <div style="font-size:.72rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Coordonnées</div>
       <div class="form-grid mb-3">
         <div class="form-group"><label>Ville</label><input name="ville" placeholder="Ville"></div>
@@ -76,7 +87,7 @@
       </div>
 
       <div class="form-actions">
-        <a href="{{ url_for('contribuables') }}" class="btn btn-outline">Annuler</a>
+        <a href="{{ url_for('contribuables.contribuables') }}" class="btn btn-outline">Annuler</a>
         <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
       </div>
     </form>

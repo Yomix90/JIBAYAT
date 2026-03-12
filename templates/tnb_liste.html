@@ -1,10 +1,23 @@
 {% extends 'base.html' %}
 {% block title %}TNB — Terrains{% endblock %}
-{% block page_title %}🏗️ TNB — Terrains Urbains Non Bâtis{% endblock %}
+{% block page_title %}🏗️ Taxe sur les Terrains Urbains Non Bâtis{% endblock %}
 {% block content %}
-<div class="alert alert-info">📋 Loi 47-06 Art.39-46 | Déclaration avant le 31 Mars | Zone A: {{ tarifs|selectattr('code_tarif','eq','TNB-ZA')|list|first|attr('valeur')|default(20) }} DH/m² | Zone B: {{ tarifs|selectattr('code_tarif','eq','TNB-ZB')|list|first|attr('valeur')|default(8) }} DH/m² | Zone C: {{ tarifs|selectattr('code_tarif','eq','TNB-ZC')|list|first|attr('valeur')|default(1) }} DH/m²
-  <a href="{{ url_for('export_excel', module='TNB') }}" class="btn btn-success btn-sm ms-auto">📊 Excel</a>
+
+<div class="alert alert-info" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+  <span>
+    📋 <strong>Loi 47-06 Art.39-46</strong> — Déclaration avant le 31 Mars chaque année.
+    {% if tarifs %}
+      {% for t in tarifs %}
+        | <strong>{{ t.libelle }}</strong> : {{ t.valeur }} {{ t.unite }}
+      {% endfor %}
+    {% else %}
+      | <span style="color:var(--warn-bd)">⚠️ Aucun tarif TNB configuré —
+      <a href="{{ url_for('config.arretes_fiscaux') }}" style="color:inherit">Configurer les tarifs</a></span>
+    {% endif %}
+  </span>
+  <a href="{{ url_for('export_excel', module='TNB') }}" class="btn btn-outline btn-sm">📊 Export Excel</a>
 </div>
+
 <div class="card">
   <div class="card-header">
     <h3>Liste des Terrains ({{ items|length }})</h3>
@@ -14,18 +27,27 @@
     <form method="get" style="display:flex;gap:8px;flex:1">
       <input name="q" value="{{ q }}" placeholder="Chercher par propriétaire, N° terrain, titre foncier...">
       <button type="submit" class="btn btn-primary btn-sm">🔍</button>
-      {% if q %}<a href="{{ url_for('tnb_liste') }}" class="btn btn-outline btn-sm">✕</a>{% endif %}
+      {% if q %}<a href="{{ url_for('tnb.tnb_liste') }}" class="btn btn-outline btn-sm">✕</a>{% endif %}
     </form>
   </div>
   <div class="table-responsive">
     <table>
-      <thead><tr><th>N° Terrain</th><th>Propriétaire</th><th>Adresse</th><th>Zone</th><th>Superficie</th><th>Statut</th><th>Actions</th></tr></thead>
+      <thead><tr>
+        <th>N° Terrain</th><th>Propriétaire</th><th>Adresse</th>
+        <th>Zone</th><th>Superficie</th><th>Statut</th><th>Actions</th>
+      </tr></thead>
       <tbody>
         {% for t in items %}
         <tr>
           <td><strong style="color:var(--primary)">{{ t.numero_terrain }}</strong></td>
-          <td><strong>{{ t.nom }} {{ t.prenom or t.raison_sociale or '' }}</strong><br><small style="color:var(--muted)">{{ t.ctb_num }}</small></td>
-          <td style="max-width:160px">{{ t.adresse }}<br><small dir="rtl" style="color:var(--muted)">{{ t.adresse_ar or '' }}</small></td>
+          <td>
+            <strong>{{ t.nom }} {{ t.prenom or t.raison_sociale or '' }}</strong>
+            <br><small style="color:var(--muted)">{{ t.ctb_num }}</small>
+          </td>
+          <td style="max-width:160px">
+            {{ t.adresse }}
+            {% if t.adresse_ar %}<br><small dir="rtl" style="color:var(--muted)">{{ t.adresse_ar }}</small>{% endif %}
+          </td>
           <td><span class="badge b-primary">Zone {{ t.zone }}</span></td>
           <td><strong>{{ t.superficie }} m²</strong></td>
           <td>
@@ -36,8 +58,8 @@
           </td>
           <td>
             <div class="df gap-2">
-              <a href="{{ url_for('tnb_detail', id=t.id) }}" class="btn btn-primary btn-xs">🔍 Détail</a>
-              <a href="{{ url_for('tnb_paiement', id=t.id) }}" class="btn btn-accent btn-xs">💳 Paiement</a>
+              <a href="{{ url_for('tnb.tnb_detail', id=t.id) }}" class="btn btn-primary btn-xs">🔍 Détail</a>
+              <a href="{{ url_for('tnb.tnb_paiement', id=t.id) }}" class="btn btn-accent btn-xs">💳 Paiement</a>
             </div>
           </td>
         </tr>
@@ -51,33 +73,51 @@
 
 <!-- Modal Ajout Terrain -->
 <div class="modal-overlay" id="addTerrain">
-  <div class="modal">
-    <div class="modal-header"><h3>🏗️ Nouveau Terrain TNB</h3><button class="modal-close" onclick="closeModal('addTerrain')">✕</button></div>
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h3>🏗️ Nouveau Terrain TNB</h3>
+      <button class="modal-close" onclick="closeModal('addTerrain')">✕</button>
+    </div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('tnb_ajouter') }}">
-        <div class="form-group" style="margin-bottom:12px"><label>Contribuable / Propriétaire *</label>
+      <form method="post" action="{{ url_for('tnb.tnb_ajouter') }}">
+        <div class="form-group mb-3">
+          <label>Contribuable / Propriétaire *</label>
           <select name="contribuable_id" required>
             <option value="">— Sélectionner —</option>
-            {% for c in contribuables %}<option value="{{ c.id }}">{{ c.numero }} — {{ c.nom }} {{ c.prenom or c.raison_sociale or '' }}</option>{% endfor %}
+            {% for c in contribuables %}
+            <option value="{{ c.id }}">{{ c.numero }} — {{ c.nom }} {{ c.prenom or c.raison_sociale or '' }}</option>
+            {% endfor %}
           </select>
         </div>
-        <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-grid">
           <div class="form-group"><label>Adresse terrain</label><input name="adresse" required></div>
-          <div class="form-group"><label>Adresse العنوان</label><input name="adresse_ar" dir="rtl"></div>
+          <div class="form-group"><label>Adresse (العنوان)</label><input name="adresse_ar" dir="rtl"></div>
           <div class="form-group"><label>Quartier</label><input name="quartier"></div>
           <div class="form-group"><label>Superficie (m²) *</label><input type="number" name="superficie" step="0.01" required></div>
-          <div class="form-group"><label>Zone</label>
+          <div class="form-group">
+            <label>Zone</label>
             <select name="zone">
-              {% for t in tarifs %}<option value="{{ t.code_tarif[-1] }}">Zone {{ t.code_tarif[-1] }} — {{ t.libelle }} ({{ t.valeur }} {{ t.unite }})</option>{% endfor %}
+              {% if tarifs %}
+                {% for t in tarifs %}
+                <option value="{{ t.libelle[-1] if t.libelle[-1] in 'ABCDE' else loop.index }}">
+                  {{ t.libelle }} — {{ t.valeur }} {{ t.unite }}
+                </option>
+                {% endfor %}
+              {% else %}
+                <option value="A">Zone A</option>
+                <option value="B">Zone B</option>
+                <option value="C">Zone C</option>
+              {% endif %}
             </select>
           </div>
           <div class="form-group"><label>Titre Foncier</label><input name="titre_foncier"></div>
           <div class="form-group"><label>N° Parcelle</label><input name="num_parcelle"></div>
-          <div class="form-group"><label>Statut terrain</label>
+          <div class="form-group">
+            <label>Statut terrain</label>
             <select name="statut">
-              <option value="non_bati">Non bâti</option>
-              <option value="en_construction">En construction</option>
-              <option value="construit">Construit</option>
+              <option value="non_bati">🏗️ Non bâti</option>
+              <option value="en_construction">🚧 En construction</option>
+              <option value="construit">🏠 Construit</option>
             </select>
           </div>
           <div class="form-group"><label>Date acquisition</label><input type="date" name="date_acquisition"></div>

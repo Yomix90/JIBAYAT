@@ -8,7 +8,7 @@
 <div class="card">
   <div class="card-header"><h3>➕ Nouveau Tarif</h3></div>
   <div class="card-body">
-    <form method="post" action="{{ url_for('ajouter_tarif') }}">
+    <form method="post" action="{{ url_for('config.ajouter_tarif') }}">
       <div class="form-grid">
         <div class="form-group">
           <label>Module / Rubrique *</label>
@@ -72,7 +72,7 @@
     <td style="font-size:.78rem">{{ t.commune_nom }}</td>
     {% if user.peut_config %}<td>
       {% if user.peut_supprimer %}
-      <form method="post" action="{{ url_for('supprimer_tarif', id=t.id) }}" onsubmit="return confirm('Supprimer?')">
+      <form method="post" action="{{ url_for('config.supprimer_tarif', id=t.id) }}" data-confirm="danger" data-confirm-title="Confirmer la suppression" data-confirm-msg="Cette action est irréversible. Voulez-vous vraiment supprimer cet élément ?">
         <button type="submit" class="btn btn-danger btn-xs">🗑️</button>
       </form>{% endif %}
     </td>{% endif %}

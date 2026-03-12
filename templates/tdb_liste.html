@@ -14,7 +14,7 @@
     <form method="get" style="display:flex;gap:8px;flex:1">
       <input name="q" value="{{ q }}" placeholder="Chercher établissement, contribuable...">
       <button type="submit" class="btn btn-primary btn-sm">🔍</button>
-      {% if q %}<a href="{{ url_for('tdb_liste') }}" class="btn btn-outline btn-sm">✕</a>{% endif %}
+      {% if q %}<a href="{{ url_for('tdb.tdb_liste') }}" class="btn btn-outline btn-sm">✕</a>{% endif %}
     </form>
   </div>
   <div class="table-responsive">
@@ -32,8 +32,8 @@
           <td><span class="badge {{ 'b-ok' if e.statut=='actif' else 'b-danger' }}">{{ e.statut }}</span></td>
           <td>
             <div class="df gap-2">
-              <a href="{{ url_for('tdb_detail', id=e.id) }}" class="btn btn-primary btn-xs">🔍</a>
-              <a href="{{ url_for('tdb_paiement', id=e.id) }}" class="btn btn-accent btn-xs">💳</a>
+              <a href="{{ url_for('tdb.tdb_detail', id=e.id) }}" class="btn btn-primary btn-xs">🔍</a>
+              <a href="{{ url_for('tdb.tdb_paiement', id=e.id) }}" class="btn btn-accent btn-xs">💳</a>
             </div>
           </td>
         </tr>
@@ -49,7 +49,7 @@
   <div class="modal">
     <div class="modal-header"><h3>🍺 Nouvel Établissement</h3><button class="modal-close" onclick="closeModal('addEtab')">✕</button></div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('tdb_ajouter') }}">
+      <form method="post" action="{{ url_for('tdb.tdb_ajouter') }}">
         <div class="form-group mb-3"><label>Contribuable / Propriétaire *</label>
           <select name="contribuable_id" required>
             <option value="">— Sélectionner —</option>

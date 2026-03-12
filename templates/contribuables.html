@@ -6,24 +6,29 @@
   <div class="card-header">
     <h3>Liste des Contribuables ({{ items|length }})</h3>
     <div class="df gap-2">
-      <a href="{{ url_for('ajouter_contribuable') }}" class="btn btn-primary btn-sm">➕ Nouveau</a>
+      <a href="{{ url_for('contribuables.ajouter_contribuable') }}" class="btn btn-primary btn-sm">➕ Nouveau</a>
       <a href="{{ url_for('export_excel', module='CONTRIBUABLES') }}" class="btn btn-success btn-sm">📊 Excel</a>
     </div>
   </div>
   <div class="search-bar">
     <form method="get" style="display:flex;gap:8px;flex:1">
-      <input name="q" value="{{ q }}" placeholder="Chercher: nom, prénom, CIN, N° contribuable, اسم...">
+      <input name="q" value="{{ q }}" placeholder="Chercher: nom, prénom, اسم...">
       <button type="submit" class="btn btn-primary btn-sm">🔍</button>
-      {% if q %}<a href="{{ url_for('contribuables') }}" class="btn btn-outline btn-sm">✕</a>{% endif %}
+      {% if q %}<a href="{{ url_for('contribuables.contribuables') }}" class="btn btn-outline btn-sm">✕</a>{% endif %}
     </form>
   </div>
   <div class="table-responsive">
     <table>
-      <thead><tr><th>N° Contribuable</th><th>Type</th><th>Nom / الاسم</th><th>Adresse / العنوان</th><th>CIN / ICE</th><th>Tél.</th><th>Ville</th><th>Actions</th></tr></thead>
+      <thead><tr><th>CIN / ICE / RC</th><th>Type</th><th>Nom / الاسم</th><th>Adresse / العنوان</th><th>Tél.</th><th>Ville</th><th>Actions</th></tr></thead>
       <tbody>
         {% for c in items %}
         <tr>
-          <td><strong style="color:var(--primary)">{{ c.numero }}</strong></td>
+          <td>
+            {% if c.cin %}<strong style="color:var(--primary)">{{ c.cin }}</strong>{% endif %}
+            {% if c.ice %}<br><span style="font-size:.75rem;color:var(--muted)">ICE: {{ c.ice }}</span>{% endif %}
+            {% if c.rc %}<br><span style="font-size:.75rem;color:var(--muted)">RC: {{ c.rc }}</span>{% endif %}
+            {% if not c.cin and not c.ice and not c.rc %}<span style="color:var(--muted)">—</span>{% endif %}
+          </td>
           <td><span class="badge {{ 'b-info' if c.type_personne=='physique' else 'b-primary' }}">{{ c.type_personne }}</span></td>
           <td>
             <strong>{% if c.type_personne=='physique' %}{{ c.nom }} {{ c.prenom or '' }}{% else %}{{ c.raison_sociale or c.nom }}{% endif %}</strong>
@@ -37,14 +42,13 @@
             <span style="font-size:.8rem">{{ c.adresse or '—' }}</span>
             {% if c.adresse_ar %}<br><span dir="rtl" style="font-size:.78rem;color:var(--muted)">{{ c.adresse_ar }}</span>{% endif %}
           </td>
-          <td style="font-size:.78rem">{{ c.cin or '' }}{% if c.ice %}<br>{{ c.ice }}{% endif %}</td>
           <td>{{ c.telephone or '—' }}</td>
           <td>{{ c.ville or '—' }}</td>
           <td>
             <div class="df gap-2">
-              <a href="{{ url_for('modifier_contribuable', id=c.id) }}" class="btn btn-outline btn-xs">✏️</a>
+              <a href="{{ url_for('contribuables.modifier_contribuable', id=c.id) }}" class="btn btn-outline btn-xs">✏️</a>
               {% if user.peut_supprimer %}
-              <form method="post" action="{{ url_for('supprimer_contribuable', id=c.id) }}" onsubmit="return confirm('Supprimer ce contribuable?')">
+              <form method="post" action="{{ url_for('contribuables.supprimer_contribuable', id=c.id) }}" data-confirm="danger" data-confirm-title="Confirmer la suppression" data-confirm-msg="Cette action est irréversible. Voulez-vous vraiment supprimer cet élément ?">
                 <button type="submit" class="btn btn-danger btn-xs">🗑️</button>
               </form>
               {% endif %}
@@ -52,7 +56,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="empty-state"><span class="ei">👥</span>Aucun contribuable trouvé</td></tr>
+        <tr><td colspan="7" class="empty-state"><span class="ei">👥</span>Aucun contribuable trouvé</td></tr>
         {% endfor %}
       </tbody>
     </table>

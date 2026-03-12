@@ -25,12 +25,12 @@
 </div>
 
 <!-- Paramètres par module -->
-<form method="post" action="{{ url_for('modifier_parametres') }}">
+<form method="post" action="{{ url_for('config.modifier_parametres') }}">
   {% for module, params in grouped.items() %}
   <div class="card">
     <div class="card-header">
       <h3>
-        {% if module=='TNB' %}🏗️ TNB — Terrains Urbains Non Bâtis
+        {% if module=='TNB' %}🏗️ Terrains Urbains Non Bâtis
         {% elif module=='DEBITS_BOISSONS' %}🍺 Taxe Débits de Boissons
         {% elif module=='STATIONNEMENT' %}🚗 Droit de Stationnement TPV
         {% elif module=='TRANSPORT_VOYAGEURS' %}🚌 Transport Voyageurs

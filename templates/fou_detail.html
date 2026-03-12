@@ -3,8 +3,8 @@
 {% block page_title %}🔑 Dossier Fourrière — {{ dossier.numero }}{% endblock %}
 {% block content %}
 <div class="df gap-2 mb-3">
-  <a href="{{ url_for('fou_liste') }}" class="btn btn-outline btn-sm">← Liste</a>
-  <a href="{{ url_for('fou_paiement', id=dossier.id) }}" class="btn btn-accent">💳 Paiement</a>
+  <a href="{{ url_for('fou.fou_liste') }}" class="btn btn-outline btn-sm">← Liste</a>
+  <a href="{{ url_for('fou.fou_paiement', id=dossier.id) }}" class="btn btn-accent">💳 Paiement</a>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
   <div class="card"><div class="card-header"><h3>🔑 Dossier</h3></div>
@@ -31,7 +31,7 @@
     </div>
   </div>
 </div>
-<div class="card"><div class="card-header"><h3>📄 Déclarations</h3><a href="{{ url_for('fou_paiement', id=dossier.id) }}" class="btn btn-accent btn-sm">+ Paiement</a></div>
+<div class="card"><div class="card-header"><h3>📄 Déclarations</h3><a href="{{ url_for('fou.fou_paiement', id=dossier.id) }}" class="btn btn-accent btn-sm">+ Paiement</a></div>
   <div class="table-responsive"><table>
     <thead><tr><th>N° Décl.</th><th>Montant</th><th>Pénalité</th><th>Total</th><th>Bulletin</th><th>Statut</th></tr></thead>
     <tbody>
