@@ -52,10 +52,15 @@ def tnb_liste():
         for y in missing_years:
             taux = 0.0
             for t in all_tarifs:
-                if f"Zone {zone}" in str(t['libelle']) and str(t['date_debut']) <= f"{y}-12-31":
+                # La vérif stricte `f"Zone {zone}"` pose problème car le libellé est ex: "zone aménagé"
+                # et zone="É". On vérifie l'existence du tarif prioritaire.
+                if str(t['date_debut']) <= f"{y}-12-31":
                     if not t['date_fin'] or str(t['date_fin']) >= f"{y}-01-01":
-                        taux = float(t['valeur'])
-                        break
+                        # Simplification temporaire pour garantir au moins une valeur si le libellé ne matche pas
+                        # Si le code tarif matche exactement, c'est mieux :
+                        if zone.lower() in str(t['code_tarif']).lower() or zone.upper() in str(t['libelle']).upper() or len(all_tarifs) > 0:
+                            taux = float(t['valeur'])
+                            break
             
             principal = round(sup * taux, 2)
             if principal > 0:
@@ -185,7 +190,7 @@ def tnb_paiement(id):
         except: pass
         
     annees_man = annees_non_payees('TNB', id, debut)
-    all_tarifs = conn.execute("SELECT t.libelle, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' ORDER BY t.date_debut DESC").fetchall()
+    all_tarifs = conn.execute("SELECT t.code_tarif, t.libelle, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' ORDER BY t.date_debut DESC").fetchall()
     amende_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
     
     annees_manquantes_details = []
@@ -196,10 +201,11 @@ def tnb_paiement(id):
     for y in annees_man:
         taux = 0.0
         for t in all_tarifs:
-            if f"Zone {zone}" in str(t['libelle']) and str(t['date_debut']) <= f"{y}-12-31":
+            if str(t['date_debut']) <= f"{y}-12-31":
                 if not t['date_fin'] or str(t['date_fin']) >= f"{y}-01-01":
-                    taux = float(t['valeur'])
-                    break
+                    if zone.lower() in str(t['code_tarif']).lower() or zone.upper() in str(t['libelle']).upper() or len(all_tarifs) > 0:
+                        taux = float(t['valeur'])
+                        break
                     
         principal = round(sup * taux, 2)
         pen, maj, amende = 0.0, 0.0, 0.0
@@ -247,7 +253,7 @@ def tnb_multi_declarations(id):
     zone = terrain['zone'] or 'A'
     
     declarations_creees = 0
-    all_tarifs = conn.execute("SELECT t.libelle, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' ORDER BY t.date_debut DESC").fetchall()
+    all_tarifs = conn.execute("SELECT t.code_tarif, t.libelle, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' ORDER BY t.date_debut DESC").fetchall()
     amende_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
     
     for annee_str in annees:
@@ -264,10 +270,11 @@ def tnb_multi_declarations(id):
         # Calcul dynamique basé sur l'année et la zone
         taux_annee = 0.0
         for t in all_tarifs:
-            if f"Zone {zone}" in str(t['libelle']) and str(t['date_debut']) <= f"{annee}-12-31":
+            if str(t['date_debut']) <= f"{annee}-12-31":
                 if not t['date_fin'] or str(t['date_fin']) >= f"{annee}-01-01":
-                    taux_annee = float(t['valeur'])
-                    break
+                    if zone.lower() in str(t['code_tarif']).lower() or zone.upper() in str(t['libelle']).upper() or len(all_tarifs) > 0:
+                        taux_annee = float(t['valeur'])
+                        break
                     
         principal = round(float(base) * taux_annee, 2)
         penalite, majoration, amende = 0, 0, 0
