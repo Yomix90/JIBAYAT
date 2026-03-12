@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from datetime import datetime, date
 from database import get_db
-from modules.helpers import login_required, get_current_user, annees_non_payees, get_tarifs_module
+from modules.helpers import login_required, get_current_user, annees_non_payees, get_tarifs_module, get_param, calculer_penalites, gen_num
 
 bp = Blueprint('tnb', __name__)
 
@@ -115,16 +115,96 @@ def tnb_transfert(id):
 def tnb_paiement(id):
     user = get_current_user()
     conn = get_db()
-    terrain = conn.execute('''SELECT t.*, c.nom, c.prenom, c.raison_sociale, c.id as ctb_id
+    terrain = conn.execute('''SELECT t.*, c.nom, c.prenom, c.raison_sociale, c.id as ctb_id,
+        c.adresse as ctb_adresse, c.cin, c.telephone, c.email
         FROM terrains t JOIN contribuables c ON t.contribuable_id=c.id WHERE t.id=?''', (id,)).fetchone()
     declarations = conn.execute('''SELECT d.*, b.statut as bull_statut, b.id as bull_id, b.numero_bulletin
         FROM declarations d LEFT JOIN bulletins b ON b.declaration_id=d.id
         WHERE d.module="TNB" AND d.reference_id=? ORDER BY d.annee DESC''', (id,)).fetchall()
     tarifs = get_tarifs_module('TNB')
-    annees_man = annees_non_payees('TNB', id)
+    
+    # Calculer l'année de début
+    debut = 2020
+    if terrain and terrain['date_acquisition']:
+        try:
+            debut = max(2020, int(terrain['date_acquisition'][:4]))
+        except: pass
+        
+    annees_man = annees_non_payees('TNB', id, debut)
     params_tnb = conn.execute("SELECT * FROM parametres_calcul WHERE module='TNB' ORDER BY code").fetchall()
     conn.close()
-    return render_template('paiement_module.html', user=user, objet=terrain, module='TNB',
-        module_label='Taxe Terrains Urbains Non Bâtis', ref_id=id,
+    return render_template('tnb_paiement.html', user=user, terrain=terrain, 
         declarations=declarations, annees_manquantes=annees_man,
         tarifs=tarifs, params=params_tnb, today=date.today().isoformat())
+
+@bp.route('/tnb/<int:id>/multi_declarations', methods=['POST'])
+@login_required
+def tnb_multi_declarations(id):
+    user = get_current_user()
+    f = request.form
+    annees = f.getlist('annees')
+    if not annees:
+        flash('Aucune année sélectionnée', 'warn')
+        return redirect(url_for('tnb.tnb_paiement', id=id))
+        
+    contrib_id = int(f['contribuable_id'])
+    zone_tarif = f['code_tarif']
+    base = float(f.get('base_calcul', 0))
+    taux = float(f.get('taux', 0))
+    date_decl = f.get('date_declaration', date.today().isoformat())
+    
+    conn = get_db()
+    for annee_str in annees:
+        annee = int(annee_str)
+        
+        # Vérif si déjà déclarée
+        existing = conn.execute('SELECT id FROM declarations WHERE module="TNB" AND reference_id=? AND annee=? AND statut!="annule"', (id, annee)).fetchone()
+        if existing: continue
+        
+        # Règles TNB : Décl limite 28 Février, Paiement limite 28 Février
+        # Mais on utilise les mêmes dates pour simplifier (ech = 28 ou 29 Fevrier de l'année concernée)
+        try:
+            date_ech = date(annee, 2, 28).isoformat()
+        except:
+            date_ech = date(annee, 2, 28).isoformat()
+            
+        principal = round(base * taux, 2)
+        penalite, majoration, amende = 0, 0, 0
+        
+        hors_delai = date_decl > date_ech
+        if hors_delai:
+            a_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
+            # Amende minimale 500 DH selon la loi marocaine sur la non déclaration
+            amende = max(round(principal * a_pct / 100, 2), 500)
+            penalite, majoration = calculer_penalites(principal, date_ech, date_decl, 'TNB')
+            
+        total = round(principal + penalite + majoration + amende, 2)
+        statut = 'sous_seuil' if total < 200 else 'emis'
+        num = gen_num('DCL', 'declarations')
+        
+        conn.execute('''INSERT INTO declarations
+            (numero,module,reference_id,contribuable_id,commune_id,annee,
+             base_calcul,taux,montant_principal,penalite_retard,majoration,amende_non_declaration,montant_total,
+             statut,date_declaration,date_echeance,agent_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+            (num, 'TNB', id, contrib_id, 1, annee,
+             base, taux, principal, penalite, majoration, amende, total, statut,
+             date_decl, date_ech, user['id']))
+             
+    conn.commit()
+    conn.close()
+    flash(f'{len(annees)} déclaration(s) générée(s) ✅', 'success')
+    return redirect(url_for('tnb.tnb_paiement', id=id))
+
+@bp.route('/tnb/<int:id>/pdf_declaration/<int:annee>')
+@login_required
+def tnb_pdf_declaration(id, annee):
+    conn = get_db()
+    terrain = conn.execute('''SELECT t.*, c.nom, c.prenom, c.raison_sociale, 
+        c.adresse as ctb_adresse, c.cin, c.telephone, c.email
+        FROM terrains t JOIN contribuables c ON t.contribuable_id=c.id WHERE t.id=?''', (id,)).fetchone()
+    decl = conn.execute('''SELECT * FROM declarations 
+        WHERE module="TNB" AND reference_id=? AND annee=? AND statut!="annule" ORDER BY id DESC LIMIT 1''', (id, annee)).fetchone()
+    commune = conn.execute('SELECT nom FROM communes LIMIT 1').fetchone()
+    conn.close()
+    return render_template('tnb_declaration_pdf.html', terrain=terrain, decl=decl, annee=annee, commune=commune['nom'] if commune else 'المملكة المغربية')

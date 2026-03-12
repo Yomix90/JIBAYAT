@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block title %}Paiement — Taxe Terrains Urbains Non Bâtis (TNB){% endblock %}
+{% block page_title %}💳 Paiement — TNB{% endblock %}
+{% block extra_head %}
+<style>
+.annee-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid var(--border); }
+.annee-row:last-child { border-bottom: none; }
+.annee-row:hover { background: rgba(0,0,0,0.02); }
+.param-chip { background: var(--bg); border-radius: 6px; padding: 6px 10px; font-size: 0.72rem; border: 1px solid var(--border); display: inline-block; margin: 4px; }
+.param-chip .val { font-weight: 800; color: var(--primary); }
+.table-totals { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-top: 20px; box-shadow: var(--shadow); }
+.table-totals .tot-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 1.1rem; }
+.table-totals .tot-row.final { font-size: 1.4rem; font-weight: 900; color: var(--danger); border-top: 2px solid var(--border); padding-top: 10px; margin-top: 10px; margin-bottom: 0; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="df gap-2 mb-3">
+  <a href="{{ url_for('tnb.tnb_liste') }}" class="btn btn-outline btn-sm">← Retour TNB</a>
+  <a href="{{ url_for('export_excel', module='TNB') }}" class="btn btn-success btn-sm">📊 Excel</a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>📋 Objet: {{ terrain.numero_terrain }} — TF: {{ terrain.titre_foncier or 'N/A' }}</h3>
+    <span><strong>{{ terrain.nom }} {{ terrain.prenom or terrain.raison_sociale or '' }}</strong></span>
+  </div>
+</div>
+
+{% if params %}
+<div class="card">
+  <div class="card-header"><h3>⚙️ Règles de Calcul — TNB</h3></div>
+  <div class="card-body">
+    {% for p in params %}
+    <div class="param-chip">{{ p.libelle }}: <span class="val">{{ p.valeur }} {{ p.unite }}</span></div>
+    {% endfor %}
+    <div class="param-chip">Date Limite (Déclaration / Paiement): <span class="val">28 Février</span></div>
+    <div class="param-chip">Amende Non-Déclaration: <span class="val" style="color:var(--danger)">15% (Min 500 DH)</span></div>
+  </div>
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+  
+  <!-- Régularisation en masse -->
+  <div class="card">
+    <div class="card-header"><h3>⏱️ Régularisation — Années Non Payées</h3></div>
+    <div class="card-body">
+      {% if annees_manquantes %}
+      <div class="alert alert-warn mb-3">
+        Sélectionnez les années à déclarer et payer :
+      </div>
+
+      <form method="post" action="{{ url_for('tnb.tnb_multi_declarations', id=terrain.id) }}" id="multiDeclForm">
+        <input type="hidden" name="contribuable_id" value="{{ terrain.ctb_id }}">
+
+        <div class="form-grid mb-3">
+          <div class="form-group">
+            <label>Zone (Tarif)</label>
+            <select name="code_tarif" id="tarifSelect" onchange="recalculateAll()">
+              {% for t in tarifs %}
+              <option value="{{ t.code_tarif }}" data-val="{{ t.valeur }}">Zone {{ t.code_tarif[-1] }} — {{ t.valeur }} {{ t.unite }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Superficie (m²)</label>
+            <input type="number" name="base_calcul" id="base" step="0.01" value="{{ terrain.superficie or '0' }}" oninput="recalculateAll()">
+          </div>
+          <div class="form-group">
+            <label>Tarif DH/m²</label>
+            <input type="number" name="taux" id="taux" step="0.01" readonly style="background:#f8f8f8">
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden">
+          {% for a in annees_manquantes %}
+          <div class="annee-row">
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:700; font-size:1.1rem">
+              <input type="checkbox" name="annees" value="{{ a }}" class="year-chk" onchange="recalculateAll()"> {{ a }}
+            </label>
+            <div style="text-align:right">
+              <span id="res-{{ a }}" style="font-weight:700; color:var(--primary)">0.00 DH</span>
+              <div id="det-{{ a }}" style="font-size:0.75rem; color:var(--danger)"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="table-totals" id="totalsBox" style="display:none">
+          <div class="tot-row"><span>Principal ({%raw%}<span id="tQte">0</span>{%endraw%} ans)</span><strong id="tPrin">0.00 DH</strong></div>
+          <div class="tot-row" style="color:var(--danger)"><span>Pénalités + Majorations</span><strong id="tPen">0.00 DH</strong></div>
+          <div class="tot-row" style="color:var(--danger)"><span>Amende Non Déclaration</span><strong id="tAmd">0.00 DH</strong></div>
+          <div class="tot-row final"><span>TOTAL À PAYER</span><strong id="tTotal">0.00 DH</strong></div>
+        </div>
+
+        {% if user.peut_creer_bulletin or user.peut_ajouter %}
+        <div class="mt-4">
+          <button type="submit" class="btn btn-danger" style="width:100%">📋 Générer Déclarations Sélectionnées</button>
+        </div>
+        {% endif %}
+      </form>
+      {% else %}
+      <div class="empty-state"><span class="ei">✅</span>Toutes les années sont à jour.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Historique déclarations -->
+  <div class="card">
+    <div class="card-header"><h3>📄 Historique & Bulletins</h3></div>
+    {% if declarations %}
+    <div class="table-responsive">
+      <table>
+        <thead><tr>
+          <th>Année</th><th>Principal</th><th>Maj+Pen+Amd</th><th>Total</th><th>Bulletin</th><th>Action</th>
+        </tr></thead>
+        <tbody>
+          {% for d in declarations %}
+          <tr>
+            <td><strong>{{ d.annee }}</strong></td>
+            <td>{{ "%.2f"|format(d.montant_principal) }}</td>
+            <td><small style="color:var(--danger)">+{{ "%.2f"|format(d.penalite_retard+d.majoration+d.amende_non_declaration) }}</small></td>
+            <td><strong>{{ "%.2f"|format(d.montant_total) }}</strong></td>
+            <td>
+              {% if d.numero_bulletin %}<span class="badge b-ok">{{ d.numero_bulletin }}</span>
+              {% elif d.statut=='emis' and user.peut_creer_bulletin %}
+              <form method="post" action="{{ url_for('creer_bulletin') }}" style="display:inline">
+                <input type="hidden" name="declaration_id" value="{{ d.id }}">
+                <input type="hidden" name="date_paiement" value="{{ today }}">
+                <button type="submit" class="btn btn-accent btn-xs">Payer</button>
+              </form>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('tnb.tnb_pdf_declaration', id=terrain.id, annee=d.annee) }}" target="_blank" class="btn btn-outline btn-xs">🖨️ PDF Décl.</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><span class="ei">📄</span>Aucune déclaration effectuée.</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+async function recalculateAll() {
+  const ts = document.getElementById('tarifSelect');
+  if(ts) document.getElementById('taux').value = ts.options[ts.selectedIndex]?.dataset?.val || 0;
+  
+  const base = parseFloat(document.getElementById('base').value) || 0;
+  const taux = parseFloat(document.getElementById('taux').value) || 0;
+  const principal = Math.round(base * taux * 100) / 100;
+  
+  const checkboxes = document.querySelectorAll('.year-chk');
+  let tPrin = 0, tPen = 0, tAmd = 0, count = 0;
+  
+  for(let chk of checkboxes) {
+    const annee = parseInt(chk.value);
+    const resEl = document.getElementById('res-' + annee);
+    const detEl = document.getElementById('det-' + annee);
+    
+    if(chk.checked && principal > 0) {
+      count++;
+      try {
+        const ech = annee + "-02-28";
+        // Appel d'API pour chaque année cochée
+        let r = await fetch(`/api/calcul?montant=${principal}&echeance=${ech}&paiement={{today}}&module=TNB&hors_delai=1`);
+        let d = await r.json();
+        
+        let amende = Math.max(Math.round(principal * 0.15 * 100) / 100, 500); // 15% MIN 500 DH pour TNB non déclaré
+        let total = principal + d.penalite + d.majoration + amende;
+        
+        resEl.textContent = total.toFixed(2) + ' DH';
+        detEl.textContent = `Pén: ${d.penalite.toFixed(2)} | Maj: ${d.majoration.toFixed(2)} | Amd: ${amende.toFixed(2)}`;
+        
+        tPrin += principal;
+        tPen += (d.penalite + d.majoration);
+        tAmd += amende;
+      } catch(e) { console.error(e); }
+    } else {
+      resEl.textContent = '0.00 DH';
+      detEl.textContent = '';
+    }
+  }
+  
+  const box = document.getElementById('totalsBox');
+  if(count > 0) {
+    box.style.display = 'block';
+    document.getElementById('tQte').textContent = count;
+    document.getElementById('tPrin').textContent = tPrin.toFixed(2) + ' DH';
+    document.getElementById('tPen').textContent = tPen.toFixed(2) + ' DH';
+    document.getElementById('tAmd').textContent = tAmd.toFixed(2) + ' DH';
+    document.getElementById('tTotal').textContent = (tPrin + tPen + tAmd).toFixed(2) + ' DH';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', recalculateAll);
+</script>
+{% endblock %}
