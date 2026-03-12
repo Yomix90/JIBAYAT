@@ -517,24 +517,45 @@ class ModernLauncher(tk.Tk):
         card_ex = tk.Frame(container, bg=COLORS["card"], padx=15, pady=15, highlightbackground=COLORS["border"], highlightthickness=1)
         card_ex.pack(fill=tk.X, pady=(0, 20))
 
-        tk.Label(card_ex, text="📤 EXPORTER & SYNCHRONISER GOOGLE DRIVE", font=FONT_BOLD, bg=COLORS["card"], fg=COLORS["white"]).pack(anchor="w", pady=(0, 10))
+        tk.Label(card_ex, text="📤 EXPORTER & SYNCHRONISER", font=FONT_BOLD, bg=COLORS["card"], fg=COLORS["white"]).pack(anchor="w", pady=(0, 10))
         
         btn_frame = tk.Frame(card_ex, bg=COLORS["card"])
         btn_frame.pack(fill=tk.X, pady=(0, 10))
-        tk.Button(btn_frame, text="📦 Exporter la base (.db)", bg=COLORS["accent"], fg="white", font=FONT_MAIN, relief="flat", padx=10, pady=6, cursor="hand2", command=self._export_db).pack(side=tk.LEFT)
+        tk.Button(btn_frame, text="📦 Exporter manuellement (.db)", bg=COLORS["accent"], fg="white", font=FONT_MAIN, relief="flat", padx=10, pady=6, cursor="hand2", command=self._export_db).pack(side=tk.LEFT)
 
-        tk.Label(card_ex, text="Acheminez dynamiquement la Base vers Google Drive (Dossier Synchro) :", font=FONT_MAIN, bg=COLORS["card"], fg=COLORS["muted"]).pack(anchor="w", pady=(0, 5))
-        
+        # -- Option A : Dossier Local --
+        tk.Label(card_ex, text="Acheminez dynamiquement vers un dossier Google Drive Local :", font=FONT_MAIN, bg=COLORS["card"], fg=COLORS["muted"]).pack(anchor="w", pady=(10, 5))
         row_gd = tk.Frame(card_ex, bg=COLORS["card"])
         row_gd.pack(fill=tk.X)
-        self.var_gdrive = tk.StringVar(value=gdrive_dir)
+        self.var_gdrive = tk.StringVar(value=cfg.get("gdrive_backup", ""))
         ent_gd = tk.Entry(row_gd, textvariable=self.var_gdrive, font=FONT_MAIN, bg=COLORS["bg"], fg=COLORS["text"], insertbackground=COLORS["text"], relief="flat")
         ent_gd.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10), ipady=5)
-        
         tk.Button(row_gd, text="Parcourir...", bg=COLORS["border"], fg="white", font=FONT_MAIN, relief="flat", cursor="hand2", command=self._browse_gdrive).pack(side=tk.LEFT, padx=(0, 5), ipady=2)
-        tk.Button(row_gd, text="💾 Sauvegarder Config", bg=COLORS["accent2"], fg="white", font=FONT_BOLD, relief="flat", cursor="hand2", command=self._save_gdrive_config).pack(side=tk.LEFT, ipady=2)
+        tk.Button(row_gd, text="💾 Auto-Local", bg=COLORS["accent2"], fg="white", font=FONT_BOLD, relief="flat", cursor="hand2", command=self._save_gdrive_config).pack(side=tk.LEFT, ipady=2)
 
-        tk.Label(card_ex, text="ℹ️ La base sera sauvegardée automatiquement à l'arrêt du serveur si un dossier Google Drive est configuré.", font=("Segoe UI", 8, "italic"), bg=COLORS["card"], fg=COLORS["muted"]).pack(anchor="w", pady=(8, 0))
+        # -- Option B : Direct Cloud API --
+        tk.Label(card_ex, text="Sauvegarde directe vers Google Drive Connecté (Cloud API) :", font=FONT_MAIN, bg=COLORS["card"], fg=COLORS["muted"]).pack(anchor="w", pady=(15, 5))
+        row_api = tk.Frame(card_ex, bg=COLORS["card"])
+        row_api.pack(fill=tk.X)
+        
+        self.var_gd_webhook = tk.StringVar(value=cfg.get("gdrive_webhook", ""))
+        self.var_gd_folder = tk.StringVar(value=cfg.get("gdrive_folder_id", ""))
+        
+        f1 = tk.Frame(row_api, bg=COLORS["card"])
+        f1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+        tk.Label(f1, text="URL Webhook Apps Script", font=("Segoe UI", 8), bg=COLORS["card"], fg=COLORS["muted"]).pack(anchor="w")
+        ent_hook = tk.Entry(f1, textvariable=self.var_gd_webhook, font=FONT_MAIN, bg=COLORS["bg"], fg=COLORS["text"], insertbackground=COLORS["text"], relief="flat")
+        ent_hook.pack(fill=tk.X, ipady=5)
+        
+        f2 = tk.Frame(row_api, bg=COLORS["card"])
+        f2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+        tk.Label(f2, text="ID Dossier (ex: 1qRS...EF9c)", font=("Segoe UI", 8), bg=COLORS["card"], fg=COLORS["muted"]).pack(anchor="w")
+        ent_fid = tk.Entry(f2, textvariable=self.var_gd_folder, font=FONT_MAIN, bg=COLORS["bg"], fg=COLORS["text"], insertbackground=COLORS["text"], relief="flat")
+        ent_fid.pack(fill=tk.X, ipady=5)
+        
+        tk.Button(row_api, text="💾 Auto-Cloud", bg=COLORS["accent2"], fg="white", font=FONT_BOLD, relief="flat", cursor="hand2", command=self._save_gdrive_api_config).pack(side=tk.RIGHT, anchor="s", ipady=2, pady=(15, 0))
+
+        tk.Label(card_ex, text="ℹ️ La sauvegarde s'exécutera automatiquement à l'arrêt du Serveur si l'une des 2 options est configurée.", font=("Segoe UI", 8, "italic"), bg=COLORS["card"], fg=COLORS["warn"]).pack(anchor="w", pady=(10, 0))
 
         # IMPORT
         card_im = tk.Frame(container, bg=COLORS["card"], padx=15, pady=15, highlightbackground=COLORS["border"], highlightthickness=1)
@@ -553,15 +574,53 @@ class ModernLauncher(tk.Tk):
         cfg["gdrive_backup"] = self.var_gdrive.get().strip()
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(cfg, f, ensure_ascii=False, indent=2)
-        messagebox.showinfo("OK", "Dossier automatique configuré. La sauvegarde se fera à l'arrêt du serveur.")
+        messagebox.showinfo("OK", "Dossier automatique local configuré. La sauvegarde se fera à l'arrêt du serveur.")
+    
+    def _save_gdrive_api_config(self) -> None:
+        cfg = load_config() or {}
+        cfg["gdrive_webhook"] = self.var_gd_webhook.get().strip()
+        cfg["gdrive_folder_id"] = self.var_gd_folder.get().strip()
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+        messagebox.showinfo("OK", "Connexion automatique API Cloud configurée. La sauvegarde directe se fera à l'arrêt du serveur.")
         
     def _auto_backup(self) -> None:
+        if not os.path.exists("fiscalite.db"): return
+        
         cfg = load_config() or {}
+        dt = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"fiscalite_Sauvegarde_{dt}.db"
+        
+        # 1. Option Local Folder
         dest = cfg.get("gdrive_backup")
-        if dest and os.path.exists(dest) and os.path.exists("fiscalite.db"):
-            dt = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            target = os.path.join(dest, f"fiscalite_Sauvegarde_{dt}.db")
-            shutil.copy("fiscalite.db", target)
+        if dest and os.path.exists(dest):
+            try:
+                shutil.copy("fiscalite.db", os.path.join(dest, filename))
+            except Exception: pass
+            
+        # 2. Option Cloud API
+        webhook = cfg.get("gdrive_webhook")
+        folder_id = cfg.get("gdrive_folder_id")
+        if webhook and folder_id:
+            try:
+                import base64, urllib.request, urllib.parse
+                
+                with open("fiscalite.db", "rb") as f:
+                    file_b64 = base64.b64encode(f.read()).decode('utf-8')
+                    
+                data = {
+                    "filename": filename,
+                    "folder_id": folder_id,
+                    "mimeType": "application/x-sqlite3",
+                    "file": file_b64
+                }
+                payload = json.dumps(data).encode("utf-8")
+                
+                req = urllib.request.Request(webhook, data=payload, method="POST")
+                req.add_header("Content-Type", "application/json")
+                urllib.request.urlopen(req, timeout=10) # Envoi bloquant (10s max)
+            except Exception as e:
+                print("Echec API Sauvegarde:", e)
 
     def _export_db(self) -> None:
         if not os.path.exists("fiscalite.db"):
