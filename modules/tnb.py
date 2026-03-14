@@ -21,7 +21,7 @@ def tnb_liste():
     items_raw = conn.execute(sql + ' ORDER BY t.date_creation DESC', params).fetchall()
     
     # Préchauffage des déclarations et tarifs pour optimiser le calcul
-    all_decls = conn.execute("SELECT reference_id, annee FROM declarations WHERE module='TNB' AND statut IN ('paye','emis','en_attente')").fetchall()
+    all_decls = conn.execute("SELECT reference_id, annee FROM declarations WHERE module='TNB' AND statut='paye'").fetchall()
     paid_map = {}
     for d in all_decls:
         paid_map.setdefault(d['reference_id'], set()).add(d['annee'])
@@ -177,7 +177,8 @@ def tnb_paiement(id):
     terrain = conn.execute('''SELECT t.*, c.nom, c.prenom, c.raison_sociale, c.id as ctb_id,
         c.adresse as ctb_adresse, c.cin, c.telephone, c.email
         FROM terrains t JOIN contribuables c ON t.contribuable_id=c.id WHERE t.id=?''', (id,)).fetchone()
-    declarations = conn.execute('''SELECT d.*, b.statut as bull_statut, b.id as bull_id, b.numero_bulletin
+    declarations = conn.execute('''SELECT d.*, b.statut as bull_statut, b.id as bull_id, 
+        b.numero_bulletin, b.numero_quittance as bull_quittance, b.date_quittance as bull_date_quittance
         FROM declarations d LEFT JOIN bulletins b ON b.declaration_id=d.id
         WHERE d.module="TNB" AND d.reference_id=? ORDER BY d.annee DESC''', (id,)).fetchall()
     tarifs = get_tarifs_module('TNB')

@@ -56,7 +56,7 @@ def gen_num(prefix, table, col='numero'):
 def annees_non_payees(module, ref_id, debut=2020):
     conn = get_db()
     payees = {r['annee'] for r in conn.execute(
-        "SELECT DISTINCT annee FROM declarations WHERE module=? AND reference_id=? AND statut IN ('paye','emis')",
+        "SELECT DISTINCT annee FROM declarations WHERE module=? AND reference_id=? AND statut='paye'",
         (module, ref_id)).fetchall()}
     conn.close()
     return [a for a in range(debut, datetime.now().year + 1) if a not in payees]

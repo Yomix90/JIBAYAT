@@ -113,12 +113,13 @@
 
   <!-- Historique déclarations -->
   <div class="card">
-    <div class="card-header"><h3>📄 Historique & Bulletins</h3></div>
+    <div class="card-header"><h3>📄 Historique &amp; Bulletins</h3></div>
     {% if declarations %}
     <div class="table-responsive">
       <table>
         <thead><tr>
-          <th>Année</th><th>Principal</th><th>Maj+Pen+Amd</th><th>Total</th><th>Bulletin</th><th>Action</th>
+          <th>Année</th><th>Principal</th><th>Pén+Maj+Amd</th><th>Total</th>
+          <th>Statut</th><th>N° Quittance</th><th>Bulletin</th><th>Action</th>
         </tr></thead>
         <tbody>
           {% for d in declarations %}
@@ -128,17 +129,20 @@
             <td><small style="color:var(--danger)">+{{ "%.2f"|format(d.penalite_retard+d.majoration+d.amende_non_declaration) }}</small></td>
             <td><strong>{{ "%.2f"|format(d.montant_total) }}</strong></td>
             <td>
-              {% if d.numero_bulletin %}<span class="badge b-ok">{{ d.numero_bulletin }}</span>
-              {% elif d.statut=='emis' and user.peut_creer_bulletin %}
-              <form method="post" action="{{ url_for('creer_bulletin') }}" style="display:inline">
-                <input type="hidden" name="declaration_id" value="{{ d.id }}">
-                <input type="hidden" name="date_paiement" value="{{ today }}">
-                <button type="submit" class="btn btn-accent btn-xs">Payer</button>
-              </form>
+              {% if d.statut == 'paye' %}<span class="badge b-ok">✅ Payé</span>{% if d.date_paiement %}<small style="display:block;color:var(--muted)">{{ d.date_paiement }}</small>{% endif %}
+              {% elif d.statut == 'emis' %}<span class="badge b-warn">⏳ Émis</span>
+              {% elif d.statut == 'sous_seuil' %}<span class="badge b-sec">✓ Sous seuil</span>
+              {% else %}<span class="badge b-sec">{{ d.statut }}</span>{% endif %}
+            </td>
+            <td>
+              {% if d.bull_quittance %}<span style="font-weight:800;color:var(--ok);font-size:.82rem">{{ d.bull_quittance }}</span>{% if d.bull_date_quittance %}<small style="display:block;color:var(--muted)">{{ d.bull_date_quittance }}</small>{% endif %}
               {% else %}—{% endif %}
             </td>
             <td>
-              <a href="{{ url_for('tnb.tnb_pdf_declaration', id=terrain.id, annee=d.annee) }}" target="_blank" class="btn btn-outline btn-xs">🖨️ PDF Décl.</a>
+              {% if d.numero_bulletin %}<span class="badge b-info" style="font-size:.65rem">{{ d.numero_bulletin }}</span>{% else %}—{% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('tnb.tnb_pdf_declaration', id=terrain.id, annee=d.annee) }}" target="_blank" class="btn btn-outline btn-xs">🖨️ PDF</a>
             </td>
           </tr>
           {% endfor %}
@@ -151,6 +155,7 @@
   </div>
 
 </div>
+
 
 <script>
 function handleCheck(chk) {
