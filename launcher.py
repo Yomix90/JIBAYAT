@@ -111,7 +111,7 @@ def make_tray_icon() -> Image.Image:
 class SetupWizard(tk.Toplevel):
     def __init__(self, parent: tk.Tk) -> None:
         super().__init__(parent)
-        self.title("🏛️  Première Installation — GFC Maroc")
+        self.title("🏛️  Première Installation — JIBAYAT")
         self.geometry("580x700")
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -129,7 +129,7 @@ class SetupWizard(tk.Toplevel):
         self._build()
 
     def _on_close(self) -> None:
-        messagebox.showerror("Erreur", "L'installation doit être complétée avant d'utiliser GFC Maroc.")
+        messagebox.showerror("Erreur", "L'installation doit être complétée avant d'utiliser JIBAYAT.")
 
     def _build(self) -> None:
         # En-tête
@@ -137,7 +137,7 @@ class SetupWizard(tk.Toplevel):
         hdr.pack(fill=tk.X)
         tk.Label(hdr, text="🏛️  Configuration Initiale",
                  font=("Segoe UI", 16, "bold"), bg=COLORS["accent"], fg=COLORS["white"]).pack()
-        tk.Label(hdr, text="GFC Maroc — Gestion Fiscale Communale",
+        tk.Label(hdr, text="JIBAYAT — Gestion Fiscale Communale",
                  font=FONT_MAIN, bg=COLORS["accent"], fg="#bfdbfe").pack()
 
         body = tk.Frame(self, bg=COLORS["bg"], padx=30, pady=20)
@@ -332,7 +332,7 @@ class ReportDialog(tk.Toplevel):
             messagebox.showwarning("Attention", "Veuillez décrire le problème.")
             return
         commune_name = self.cfg["commune"]["nom"] if self.cfg else "Inconnue"
-        subject = (f"[GFC Maroc] {self.var_type.get().capitalize()} — "
+        subject = (f"[JIBAYAT] {self.var_type.get().capitalize()} — "
                    f"{commune_name} — {self.cb_module.get()}")
         body = (f"Client: {commune_name}\nType: {self.var_type.get()}\n"
                 f"Module: {self.cb_module.get()}\nVersion: {read_version()}\n\n"
@@ -351,7 +351,7 @@ class ReportDialog(tk.Toplevel):
 class ModernLauncher(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("GFC Maroc — Contrôle Serveur")
+        self.title("JIBAYAT — Contrôle Serveur")
         self.geometry("540x660")
         self.resizable(False, False)
         self.configure(bg=COLORS["bg"])
@@ -412,7 +412,7 @@ class ModernLauncher(tk.Tk):
         # ── En-tête ──
         hdr = tk.Frame(self, bg=COLORS["accent"], pady=22)
         hdr.pack(fill=tk.X)
-        tk.Label(hdr, text="🏛️  GFC Maroc",
+        tk.Label(hdr, text="🏛️  JIBAYAT",
                  font=("Segoe UI", 22, "bold"), bg=COLORS["accent"], fg=COLORS["white"]).pack()
         tk.Label(hdr, text="Gestion Fiscale Communale — Tableau de Contrôle",
                  font=("Segoe UI", 9), bg=COLORS["accent"], fg="#bfdbfe").pack()
@@ -509,7 +509,7 @@ class ModernLauncher(tk.Tk):
         footer = tk.Frame(self, bg=COLORS["card"], pady=8)
         footer.pack(fill=tk.X, side=tk.BOTTOM)
         tk.Label(footer,
-                 text=f"GFC Maroc  v{self.version}  •  {self._commune_name()}",
+                 text=f"JIBAYAT  v{self.version}  •  {self._commune_name()}",
                  font=("Segoe UI", 8), bg=COLORS["card"], fg=COLORS["muted"]).pack()
 
     # ── Onglet Base de données ──────────────────
@@ -717,7 +717,7 @@ class ModernLauncher(tk.Tk):
     def _start_tray(self) -> None:
         icon_image = make_tray_icon()
         menu = pystray.Menu(
-            pystray.MenuItem("🖥  Ouvrir GFC Maroc",       self._show_from_tray, default=True),
+            pystray.MenuItem("🖥  Ouvrir JIBAYAT",       self._show_from_tray, default=True),
             pystray.MenuItem("🌍  Ouvrir Application",
                              lambda icon, item: webbrowser.open(f"http://{self.ip_local}:5000")),
             pystray.Menu.SEPARATOR,
@@ -728,7 +728,7 @@ class ModernLauncher(tk.Tk):
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("✖  Quitter",                  self._quit_from_tray),
         )
-        self._tray_icon = pystray.Icon("GFC_Maroc", icon_image, "GFC Maroc", menu)
+        self._tray_icon = pystray.Icon("JIBAYAT", icon_image, "JIBAYAT", menu)
         self._tray_running = True
         threading.Thread(target=self._tray_icon.run, daemon=True).start()
 
@@ -787,7 +787,7 @@ class ModernLauncher(tk.Tk):
                                        "Une nouvelle version est disponible.\nMettre à jour maintenant ?"):
                     self._do_git_pull()
             else:
-                messagebox.showinfo("✅ À jour", "GFC Maroc est déjà à jour !")
+                messagebox.showinfo("✅ À jour", "JIBAYAT est déjà à jour !")
         except FileNotFoundError:
             messagebox.showerror("Git introuvable",
                                  "Git n'est pas installé.\nTéléchargez-le sur https://git-scm.com")
@@ -813,7 +813,7 @@ class ModernLauncher(tk.Tk):
 
     # ── Fermeture ────────────────────────────────
     def _on_close(self) -> None:
-        if messagebox.askyesno("Quitter GFC Maroc", "Voulez-vous quitter ?"):
+        if messagebox.askyesno("Quitter JIBAYAT", "Voulez-vous quitter ?"):
             self._force_quit()
 
 

@@ -184,6 +184,15 @@ def init_db():
     ''')
     conn.commit()
 
+
+    # -- Migrations colonnes bulletins
+    for _col, _typ in [('numero_quittance','TEXT'), ('date_quittance','TEXT'), ('motif_rejet','TEXT')]:
+        try:
+            c.execute(f'ALTER TABLE bulletins ADD COLUMN {_col} {_typ}')
+            conn.commit()
+        except Exception:
+            pass
+
     # ── Données initiales ──────────────────────────────────────
     import hashlib as _h
     _DEFAULT_CONFIG = 'config.json'

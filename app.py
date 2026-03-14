@@ -183,14 +183,42 @@ def valider_bulletin(id):
     if not user['peut_valider_paiement']:
         flash('Accès refusé — Réservé au Régisseur', 'danger')
         return redirect(url_for('paiements'))
+    f = request.form
+    num_quittance = f.get('numero_quittance', '').strip()
+    date_quittance = f.get('date_quittance', date.today().isoformat())
+    if not num_quittance:
+        flash('Le numéro de quittance est obligatoire', 'danger')
+        return redirect(url_for('paiements'))
     conn = get_db()
     b = conn.execute('SELECT * FROM bulletins WHERE id=?', (id,)).fetchone()
     if b:
-        conn.execute("UPDATE bulletins SET statut='paye',regisseur_id=? WHERE id=?", (user['id'], id))
-        conn.execute("UPDATE declarations SET statut='paye',date_paiement=? WHERE id=?",
-                     (date.today().isoformat(), b['declaration_id']))
+        conn.execute("""UPDATE bulletins 
+            SET statut='paye', regisseur_id=?, numero_quittance=?, date_quittance=?
+            WHERE id=?""", (user['id'], num_quittance, date_quittance, id))
+        conn.execute("UPDATE declarations SET statut='paye', date_paiement=? WHERE id=?",
+                     (date_quittance, b['declaration_id']))
         conn.commit()
-        flash('Paiement validé ✅', 'success')
+        flash(f'✅ Paiement validé — Quittance N° {num_quittance}', 'success')
+    conn.close()
+    return redirect(url_for('paiements'))
+
+@app.route('/bulletins/<int:id>/rejeter', methods=['POST'])
+@login_required
+def rejeter_bulletin(id):
+    user = get_current_user()
+    if not user['peut_valider_paiement']:
+        flash('Accès refusé', 'danger')
+        return redirect(url_for('paiements'))
+    f = request.form
+    motif = f.get('motif_rejet', 'Non précisé').strip()
+    conn = get_db()
+    b = conn.execute('SELECT * FROM bulletins WHERE id=?', (id,)).fetchone()
+    if b:
+        conn.execute("UPDATE bulletins SET statut='rejete', motif_rejet=?, regisseur_id=? WHERE id=?",
+                     (motif, user['id'], id))
+        conn.execute("UPDATE declarations SET statut='emis' WHERE id=?", (b['declaration_id'],))
+        conn.commit()
+        flash(f'❌ Bulletin N° {b["numero_bulletin"]} rejeté : {motif}', 'danger')
     conn.close()
     return redirect(url_for('paiements'))
 
@@ -410,5 +438,5 @@ if __name__ == '__main__':
         s.connect(("8.8.8.8", 80)); ip = s.getsockname()[0]; s.close()
     except:
         ip = 'localhost'
-    print(f"\n{'='*55}\n  GFC MAROC — Gestion Fiscale Communale\n  Local : http://localhost:5000\n  Réseau: http://{ip}:5000\n  Login : admin@commune.ma / admin123\n{'='*55}\n")
+    print(f"\n{'='*55}\n  JIBAYAT — Gestion Fiscale Communale\n  Local : http://localhost:5000\n  Réseau: http://{ip}:5000\n  Login : admin@commune.ma / admin123\n{'='*55}\n")
     app.run(host='0.0.0.0', port=5000, debug=False)

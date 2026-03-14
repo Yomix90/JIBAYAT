@@ -3,7 +3,7 @@
 ## Étape 1 — Créer le Google Sheet
 
 1. Allez sur https://sheets.google.com
-2. Créez un nouveau classeur nommé : **"GFC Maroc — Rapports Clients"**
+2. Créez un nouveau classeur nommé : **"JIBAYAT — Rapports Clients"**
 3. Notez l'**ID du classeur** dans l'URL :
    `https://docs.google.com/spreadsheets/d/1bUws5EDVXVXXEOqFsOwvSAdPCUdMoOVMXIhKbnjZYLM/edit`
 

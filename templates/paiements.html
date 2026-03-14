@@ -3,13 +3,63 @@
 {% block page_title %}💳 Bulletins de Paiement{% endblock %}
 {% block content %}
 <div class="alert alert-info">
-  ℹ️ <strong>Workflow:</strong> L'<strong>Agent d'Assiette</strong> crée les bulletins → Le <strong>Régisseur</strong> valide et encaisse.
-  Votre rôle: <strong>{{ user.role_nom }}</strong>
+  ℹ️ <strong>Workflow:</strong> L'<strong>Agent d'Assiette</strong> crée les déclarations + envoie le bulletin de versement →
+  Le <strong>Régisseur</strong> valide avec N° quittance ou rejette.
+  <strong>Votre rôle: {{ user.role_nom }}</strong>
   {% if user.peut_creer_bulletin %}<span class="badge b-ok ml-1">✅ Peut créer bulletins</span>{% endif %}
   {% if user.peut_valider_paiement %}<span class="badge b-info ml-1">✅ Peut valider paiements</span>{% endif %}
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:18px;align-items:start">
+<!-- Modal Valider -->
+<div id="modal-valider" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:28px;min-width:380px;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <h3 style="margin:0 0 16px;color:var(--primary)">✅ Valider le Paiement</h3>
+    <p id="modal-val-info" style="font-size:.85rem;color:var(--muted);margin-bottom:16px"></p>
+    <form id="modal-val-form" method="post">
+      <div class="form-group mb-3">
+        <label style="font-weight:700">N° Quittance (RMP) *</label>
+        <input type="text" name="numero_quittance" id="val-quittance" required placeholder="Ex: QUI-2026-001"
+               style="border:2px solid var(--accent); font-weight:bold; font-size:1rem; padding:10px; width:100%; box-sizing:border-box">
+      </div>
+      <div class="form-group mb-3">
+        <label style="font-weight:700">Date d'encaissement *</label>
+        <input type="date" name="date_quittance" id="val-date" value="{{ today }}" required
+               style="padding:10px; width:100%; box-sizing:border-box">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button type="submit" class="btn btn-ok" style="flex:1">✅ Confirmer & Valider</button>
+        <button type="button" onclick="closeModals()" class="btn btn-outline" style="flex:0.4">Annuler</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Rejeter -->
+<div id="modal-rejeter" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:28px;min-width:380px;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <h3 style="margin:0 0 16px;color:var(--danger)">❌ Rejeter le Bulletin</h3>
+    <p id="modal-rej-info" style="font-size:.85rem;color:var(--muted);margin-bottom:16px"></p>
+    <form id="modal-rej-form" method="post">
+      <div class="form-group mb-3">
+        <label style="font-weight:700">Motif du rejet *</label>
+        <select name="motif_rejet" style="padding:10px; width:100%; box-sizing:border-box">
+          <option>Bulletin non conforme</option>
+          <option>Montant incorrect</option>
+          <option>N° bulletin introuvable</option>
+          <option>Pièces justificatives manquantes</option>
+          <option>Doublon</option>
+          <option>Autre</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button type="submit" class="btn btn-danger" style="flex:1">❌ Confirmer le Rejet</button>
+        <button type="button" onclick="closeModals()" class="btn btn-outline" style="flex:0.4">Annuler</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:18px;align-items:start">
   <!-- Créer bulletin — Agent d'assiette seulement -->
   {% if user.peut_creer_bulletin %}
   <div class="card">
@@ -22,8 +72,8 @@
           <select name="declaration_id" required onchange="showDeclInfo(this)">
             <option value="">— Sélectionner déclaration —</option>
             {% for d in decls %}
-            <option value="{{ d.id }}" data-montant="{{ d.montant_total }}" data-module="{{ d.module }}" data-ctb="{{ d.nom }} {{ d.prenom or d.raison_sociale or '' }}">
-              {{ d.numero }} | {{ d.module }} | {{ d.nom }} {{ d.prenom or d.raison_sociale or '' }} | {{ "%.2f"|format(d.montant_total) }} DH
+            <option value="{{ d.id }}" data-montant="{{ d.montant_total }}" data-module="{{ d.module }}" data-annee="{{ d.annee }}" data-ctb="{{ d.nom }} {{ d.prenom or d.raison_sociale or '' }}">
+              {{ d.numero }} | {{ d.module }} {{ d.annee }} | {{ d.nom }} {{ d.prenom or d.raison_sociale or '' }} | {{ "%.2f"|format(d.montant_total) }} DH
             </option>
             {% endfor %}
           </select>
@@ -32,6 +82,7 @@
         <div class="form-group mb-3">
           <label>Mode de Paiement</label>
           <select name="mode_paiement">
+            <option value="bulletin_versement">📄 Bulletin de Versement</option>
             <option value="especes">💵 Espèces</option>
             <option value="cheque">🏦 Chèque</option>
             <option value="virement">🔄 Virement bancaire</option>
@@ -40,7 +91,7 @@
         <div class="form-group mb-3"><label>Date</label><input type="date" name="date_paiement" value="{{ today }}"></div>
         <div class="form-group mb-3"><label>Notes</label><textarea name="notes" rows="2"></textarea></div>
         <div class="form-actions">
-          <button type="submit" class="btn btn-accent">📋 Générer Bulletin → Régisseur</button>
+          <button type="submit" class="btn btn-accent">📋 Envoyer → Régisseur</button>
         </div>
       </form>
       {% else %}
@@ -64,49 +115,98 @@
       <div class="df gap-2">
         <span class="badge b-warn">En attente: {{ items|selectattr('statut','eq','en_attente')|list|length }}</span>
         <span class="badge b-ok">Payés: {{ items|selectattr('statut','eq','paye')|list|length }}</span>
+        <span class="badge b-sec">Rejetés: {{ items|selectattr('statut','eq','rejete')|list|length }}</span>
       </div>
     </div>
     <div class="table-responsive">
       <table>
-        <thead><tr><th>N° Bulletin</th><th>Contribuable</th><th>Module</th><th>Montant</th><th>Mode</th><th>Statut</th><th>Actions</th></tr></thead>
+        <thead><tr>
+          <th>N° Bulletin</th><th>Contribuable</th><th>Module / Année</th>
+          <th>Montant</th><th>Mode</th><th>Statut</th><th>Quittance</th><th>Actions</th>
+        </tr></thead>
         <tbody>
           {% for b in items %}
           <tr>
             <td><strong style="color:var(--primary);font-size:.78rem">{{ b.numero_bulletin }}</strong></td>
-            <td style="font-size:.78rem"><strong>{{ b.nom }} {{ b.prenom or '' }}</strong><br><small>{{ b.annee }}</small></td>
-            <td><span class="badge b-info" style="font-size:.6rem">{{ b.module }}</span></td>
+            <td style="font-size:.78rem"><strong>{{ b.nom }} {{ b.prenom or '' }}</strong></td>
+            <td>
+              <span class="badge b-info" style="font-size:.6rem">{{ b.module }}</span>
+              {% if b.annee %}<small style="display:block;color:var(--muted)">{{ b.annee }}</small>{% endif %}
+            </td>
             <td><strong>{{ "%.2f"|format(b.montant) }} DH</strong></td>
             <td><span class="badge b-sec" style="font-size:.65rem">{{ b.mode_paiement }}</span></td>
-            <td><span class="badge {% if b.statut=='paye' %}b-ok{% elif b.statut=='en_attente' %}b-warn{% else %}b-sec{% endif %}">{{ b.statut }}</span></td>
+            <td>
+              <span class="badge {% if b.statut=='paye' %}b-ok{% elif b.statut=='en_attente' %}b-warn{% elif b.statut=='rejete' %}b-danger{% else %}b-sec{% endif %}">
+                {% if b.statut=='paye' %}✅ Payé{% elif b.statut=='en_attente' %}⏳ En attente{% elif b.statut=='rejete' %}❌ Rejeté{% else %}{{ b.statut }}{% endif %}
+              </span>
+              {% if b.motif_rejet %}<small style="display:block;color:var(--danger);font-size:.65rem">{{ b.motif_rejet }}</small>{% endif %}
+            </td>
+            <td>
+              {% if b.numero_quittance %}
+              <span style="font-size:.75rem;color:var(--ok);font-weight:700">{{ b.numero_quittance }}</span>
+              {% if b.date_quittance %}<small style="display:block;color:var(--muted)">{{ b.date_quittance }}</small>{% endif %}
+              {% else %}—{% endif %}
+            </td>
             <td>
               {% if b.statut=='en_attente' and user.peut_valider_paiement %}
-              <form method="post" action="{{ url_for('valider_bulletin', id=b.id) }}"
-                data-confirm="success"
-                data-confirm-title="Valider le paiement"
-                data-confirm-msg="Confirmer la réception et validation de ce paiement ?"
-                data-confirm-detail="Bulletin : {{ b.numero_bulletin }} — Montant : {{ '%.2f'|format(b.montant) }} DH">
-                <button type="submit" class="btn btn-ok btn-xs">✅ Valider</button>
-              </form>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button type="button" class="btn btn-ok btn-xs"
+                  onclick="openValidate({{ b.id }}, '{{ b.numero_bulletin }}', {{ b.montant }})">
+                  ✅ Valider
+                </button>
+                <button type="button" class="btn btn-danger btn-xs"
+                  onclick="openReject({{ b.id }}, '{{ b.numero_bulletin }}')">
+                  ❌ Rejeter
+                </button>
+              </div>
               {% elif b.statut=='en_attente' %}
               <span class="badge b-warn" style="font-size:.62rem">⏳ Attente régisseur</span>
               {% endif %}
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="7" class="empty-state"><span class="ei">💳</span>Aucun bulletin</td></tr>
+          <tr><td colspan="8" class="empty-state"><span class="ei">💳</span>Aucun bulletin</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
 </div>
+
 <script>
 function showDeclInfo(sel){
   const opt = sel.options[sel.selectedIndex];
   const box = document.getElementById('declInfoBox');
   if(!opt.value){box.style.display='none';return;}
   box.style.display='block';
-  box.innerHTML=`<strong>Contribuable:</strong> ${opt.dataset.ctb} | <strong>Module:</strong> ${opt.dataset.module} | <strong>Montant:</strong> <span style="color:var(--accent);font-weight:800">${parseFloat(opt.dataset.montant).toFixed(2)} DH</span>`;
+  box.innerHTML=`<strong>Contribuable:</strong> ${opt.dataset.ctb} | <strong>Module:</strong> ${opt.dataset.module} ${opt.dataset.annee||''} | <strong>Montant:</strong> <span style="color:var(--accent);font-weight:800">${parseFloat(opt.dataset.montant).toFixed(2)} DH</span>`;
 }
+
+function openValidate(id, num, montant){
+  document.getElementById('modal-val-info').innerHTML = `Bulletin <strong>${num}</strong> — Montant: <strong style="color:var(--accent)">${parseFloat(montant).toFixed(2)} DH</strong>`;
+  document.getElementById('modal-val-form').action = `/bulletins/${id}/valider`;
+  document.getElementById('val-quittance').value = '';
+  const m = document.getElementById('modal-valider');
+  m.style.display='flex';
+}
+
+function openReject(id, num){
+  document.getElementById('modal-rej-info').innerHTML = `Bulletin <strong>${num}</strong> — Ce bulletin sera rejeté et la déclaration remise en statut "émis".`;
+  document.getElementById('modal-rej-form').action = `/bulletins/${id}/rejeter`;
+  const m = document.getElementById('modal-rejeter');
+  m.style.display='flex';
+}
+
+function closeModals(){
+  document.getElementById('modal-valider').style.display='none';
+  document.getElementById('modal-rejeter').style.display='none';
+}
+
+// Fermer en cliquant à l'extérieur
+['modal-valider','modal-rejeter'].forEach(id=>{
+  document.getElementById(id).addEventListener('click', function(e){
+    if(e.target===this) closeModals();
+  });
+});
 </script>
 {% endblock %}
