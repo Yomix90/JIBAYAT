@@ -3,9 +3,9 @@
 {% block page_title %}💳 Paiement — TNB{% endblock %}
 {% block extra_head %}
 <style>
-.annee-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid var(--border); }
+.annee-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); transition: background 0.15s; }
 .annee-row:last-child { border-bottom: none; }
-.annee-row:hover { background: rgba(0,0,0,0.02); }
+.annee-row:hover { background: rgba(37, 99, 235, 0.04); }
 .param-chip { background: var(--bg); border-radius: 6px; padding: 6px 10px; font-size: 0.72rem; border: 1px solid var(--border); display: inline-block; margin: 4px; }
 .param-chip .val { font-weight: 800; color: var(--primary); }
 .table-totals { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-top: 20px; box-shadow: var(--shadow); }
@@ -62,29 +62,32 @@
 
         <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden">
           {% for a in annees_manquantes %}
-          <div class="annee-row">
-            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:700; font-size:1.1rem">
-              <input type="checkbox" name="annees" value="{{ a.annee }}" class="year-chk" 
-                     data-prin="{{ a.principal }}" data-pen="{{ a.penalite+a.majoration }}" data-amd="{{ a.amende }}" data-tot="{{ a.total }}"
-                     data-idx="{{ loop.index0 }}" onchange="handleCheck(this)"> 
-              {{ a.annee }}
-            </label>
-            <div style="flex-grow:1; text-align:right">
-              <span id="res-{{ a.annee }}" style="font-weight:700; color:var(--primary)">{{ "%.2f"|format(a.total) }} DH</span>
-              <div id="det-{{ a.annee }}" style="font-size:0.75rem; color:var(--danger)">
-                {% if a.amende > 0 or a.penalite > 0 %}
-                Pén+Maj: {{ "%.2f"|format(a.penalite+a.majoration) }} | Amende: {{ "%.2f"|format(a.amende) }}
+          <div class="annee-row" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border); {% if loop.last %}border-bottom:none{% endif %}">
+            <!-- Checkbox -->
+            <input type="checkbox" name="annees" value="{{ a.annee }}" class="year-chk"
+                   data-prin="{{ a.principal }}" data-pen="{{ a.penalite+a.majoration }}"
+                   data-amd="{{ a.amende }}" data-tot="{{ a.total }}"
+                   data-idx="{{ loop.index0 }}" onchange="handleCheck(this)"
+                   style="width:18px;height:18px;cursor:pointer;flex-shrink:0">
+            <!-- Année -->
+            <span style="font-weight:700; font-size:1.05rem; min-width:48px">{{ a.annee }}</span>
+            <!-- Détail montant -->
+            <div style="flex-grow:1">
+              <span style="font-weight:700; color:var(--primary)">{{ "%.2f"|format(a.total) }} DH</span>
+              <div style="font-size:0.73rem; color:var(--danger)">
+                {% if a.penalite > 0 or a.amende > 0 %}
+                Pricipal: {{ "%.2f"|format(a.principal) }} | Pén+Maj: {{ "%.2f"|format(a.penalite+a.majoration) }} | Amende: {{ "%.2f"|format(a.amende) }}
                 {% else %}
-                (Aucune pénalité)
+                Principal: {{ "%.2f"|format(a.principal) }} — (Aucune pénalité)
                 {% endif %}
               </div>
             </div>
-            <div style="margin-left:auto; text-align:right;">
-              <!-- Print Button pour l'avis non encore réglé (génère avis sans déclaration en DB) -->
-              <a href="{{ url_for('tnb.tnb_pdf_declaration', id=terrain.id, annee=a.annee, preview=1) }}" target="_blank" class="btn btn-outline btn-xs" style="font-size:0.8rem; padding:4px 8px; font-weight:bold" onclick="event.stopPropagation()">
-                🖨️ Avis (1/{{ a.annee }})
-              </a>
-            </div>
+            <!-- Bouton Avis PDF -->
+            <a href="{{ url_for('tnb.tnb_pdf_declaration', id=terrain.id, annee=a.annee) }}" target="_blank"
+               class="btn btn-outline btn-xs" style="flex-shrink:0; font-size:0.78rem; white-space:nowrap"
+               onclick="event.stopPropagation()">
+              🖨️ Avis {{ a.annee }}
+            </a>
           </div>
           {% endfor %}
         </div>
