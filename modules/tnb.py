@@ -256,6 +256,8 @@ def tnb_multi_declarations(id):
     all_tarifs = conn.execute("SELECT t.code_tarif, t.libelle, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' ORDER BY t.date_debut DESC").fetchall()
     amende_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
     
+    n_dcl = conn.execute("SELECT COUNT(*) as c FROM declarations").fetchone()['c'] + 1
+    
     for annee_str in annees:
         annee = int(annee_str)
         
@@ -286,7 +288,8 @@ def tnb_multi_declarations(id):
             
         total = round(principal + penalite + majoration + amende, 2)
         statut_decl = 'sous_seuil' if total < 200 else 'emis'
-        num = gen_num('DCL', 'declarations')
+        num = f"DCL{datetime.now().year}{n_dcl:05d}"
+        n_dcl += 1
         
         cur = conn.execute('''INSERT INTO declarations
             (numero,module,reference_id,contribuable_id,commune_id,annee,
