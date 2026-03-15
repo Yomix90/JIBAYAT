@@ -5,31 +5,39 @@
 <style>
 .filter-bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
 .filter-bar input, .filter-bar select { padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-size:.85rem; background:var(--card); }
-.filter-bar input { flex:1; min-width:180px; }
-.group-card { border:1px solid var(--border); border-radius:10px; margin-bottom:16px; overflow:hidden; }
-.group-header { background:var(--bg); padding:10px 14px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); font-weight:700; }
-.group-total { margin-left:auto; font-size:1rem; color:var(--primary); }
-.bul-row { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); font-size:.85rem; }
+.filter-bar input { flex:1; min-width:200px; }
+.group-card { border:1px solid var(--border); border-radius:10px; margin-bottom:14px; overflow:hidden; background:var(--card); }
+.group-header { background:var(--bg); padding:10px 14px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); font-weight:700; font-size:.9rem; }
+.group-total { margin-left:auto; font-size:.92rem; color:var(--primary); font-weight:800; }
+.bul-row { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); font-size:.82rem; transition:background .12s; }
 .bul-row:last-child { border-bottom:none; }
-.bul-row input[type=checkbox] { width:16px; height:16px; flex-shrink:0; }
-.bul-row:hover { background:rgba(37,99,235,0.03); }
+.bul-row:hover { background:rgba(37,99,235,0.035); }
+.bul-row input[type=checkbox] { width:16px; height:16px; flex-shrink:0; cursor:pointer; accent-color:var(--primary); }
 .stat-en_attente { color:#d97706; font-weight:700; }
 .stat-paye { color:#16a34a; font-weight:700; }
 .stat-rejete { color:#dc2626; font-weight:700; }
+
+/* Barre flottante sélection */
+#sel-bar { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(100px);
+           background:var(--primary); color:#fff; border-radius:14px; padding:14px 24px;
+           display:flex; align-items:center; gap:14px; z-index:5000;
+           box-shadow:0 12px 40px rgba(0,0,0,0.3); transition:transform .3s ease; min-width:420px; }
+#sel-bar.visible { transform:translateX(-50%) translateY(0); }
+#sel-bar .sel-count { font-weight:800; font-size:1rem; white-space:nowrap; }
+#sel-bar .sel-total { font-size:.85rem; opacity:.8; white-space:nowrap; }
+.btn-sel-valider { background:#22c55e; color:#fff; border:none; border-radius:8px;
+                   padding:10px 18px; font-weight:700; cursor:pointer; font-size:.9rem; transition:background .15s; }
+.btn-sel-valider:hover { background:#16a34a; }
+.btn-sel-annuler { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.3);
+                   border-radius:8px; padding:10px 14px; font-size:.85rem; cursor:pointer; }
+.btn-sel-annuler:hover { background:rgba(255,255,255,.25); }
 </style>
 {% endblock %}
 {% block content %}
 
-<div class="alert alert-info" style="margin-bottom:16px">
-  ℹ️ <strong>Workflow:</strong> Agent d'Assiette → déclare & envoie le bulletin →
-  <strong>Régisseur</strong> valide avec N° quittance ou rejette.
-  Votre rôle: <strong>{{ user.role_nom }}</strong>
-  {% if user.peut_valider_paiement %}<span class="badge b-info ml-1">✅ Peut valider paiements</span>{% endif %}
-</div>
-
-<!-- Modal Valider -->
-<div id="modal-valider" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:14px;padding:30px;min-width:400px;max-width:500px;box-shadow:0 24px 64px rgba(0,0,0,0.3)">
+<!-- Modal Valider simple -->
+<div id="modal-valider" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:30px;min-width:400px;max-width:500px;box-shadow:0 24px 64px rgba(0,0,0,.3)">
     <h3 style="margin:0 0 6px;color:var(--primary)">✅ Valider le Paiement</h3>
     <p id="modal-val-info" style="font-size:.85rem;color:var(--muted);margin-bottom:18px"></p>
     <form id="modal-val-form" method="post">
@@ -44,16 +52,43 @@
                style="padding:10px;width:100%;box-sizing:border-box">
       </div>
       <div style="display:flex;gap:10px;margin-top:20px">
-        <button type="submit" class="btn btn-ok" style="flex:1">✅ Confirmer & Valider</button>
-        <button type="button" onclick="closeModals()" class="btn btn-outline" style="flex:0.5">Annuler</button>
+        <button type="submit" class="btn btn-ok" style="flex:1">✅ Confirmer</button>
+        <button type="button" onclick="closeModals()" class="btn btn-outline" style="flex:0.4">Annuler</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Valider en masse -->
+<div id="modal-masse" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:30px;min-width:440px;max-width:540px;box-shadow:0 24px 64px rgba(0,0,0,.3)">
+    <h3 style="margin:0 0 4px;color:var(--primary)">✅ Validation en Masse</h3>
+    <p id="masse-info" style="font-size:.85rem;color:var(--muted);margin-bottom:18px"></p>
+    <form id="masse-form" method="post" action="{{ url_for('valider_bulletins_masse') }}">
+      <div id="masse-hidden-ids"></div>
+      <div class="form-group mb-3">
+        <label style="font-weight:700">N° Quittance unique (RMP) *</label>
+        <input type="text" name="numero_quittance" id="masse-quittance" required placeholder="Ex: QUI-2026-042"
+               style="border:2px solid var(--accent);font-weight:bold;font-size:1.1rem;padding:12px;width:100%;box-sizing:border-box">
+        <small style="color:var(--muted)">Cette quittance sera assignée à tous les bulletins sélectionnés</small>
+      </div>
+      <div class="form-group mb-3">
+        <label style="font-weight:700">Date d'encaissement *</label>
+        <input type="date" name="date_quittance" value="{{ today }}" required
+               style="padding:10px;width:100%;box-sizing:border-box">
+      </div>
+      <div id="masse-recap" style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:.82rem;max-height:160px;overflow-y:auto;border:1px solid var(--border)"></div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button type="submit" class="btn btn-ok" style="flex:1;font-size:1rem">✅ Valider Tous</button>
+        <button type="button" onclick="closeModals()" class="btn btn-outline" style="flex:0.4">Annuler</button>
       </div>
     </form>
   </div>
 </div>
 
 <!-- Modal Rejeter -->
-<div id="modal-rejeter" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:14px;padding:30px;min-width:400px;max-width:500px;box-shadow:0 24px 64px rgba(0,0,0,0.3)">
+<div id="modal-rejeter" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:30px;min-width:400px;max-width:500px;box-shadow:0 24px 64px rgba(0,0,0,.3)">
     <h3 style="margin:0 0 6px;color:var(--danger)">❌ Rejeter le Bulletin</h3>
     <p id="modal-rej-info" style="font-size:.85rem;color:var(--muted);margin-bottom:18px"></p>
     <form id="modal-rej-form" method="post">
@@ -69,158 +104,257 @@
         </select>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px">
-        <button type="submit" class="btn btn-danger" style="flex:1">❌ Confirmer le Rejet</button>
-        <button type="button" onclick="closeModals()" class="btn btn-outline" style="flex:0.5">Annuler</button>
+        <button type="submit" class="btn btn-danger" style="flex:1">❌ Confirmer</button>
+        <button type="button" onclick="closeModals()" class="btn btn-outline" style="flex:0.4">Annuler</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- Résumé stats -->
+<!-- Barre flottante de validation en masse -->
+<div id="sel-bar">
+  <div>
+    <div class="sel-count">🗂️ <span id="sel-count-n">0</span> bulletin(s) sélectionné(s)</div>
+    <div class="sel-total">Total : <strong id="sel-count-total">0.00 DH</strong></div>
+  </div>
+  <div style="flex:1"></div>
+  <button class="btn-sel-valider" onclick="openMasse()">✅ Valider avec quittance unique</button>
+  <button class="btn-sel-annuler" onclick="clearSelection()">✕ Annuler</button>
+</div>
+
+<!-- Info rôle -->
+<div class="alert alert-info" style="margin-bottom:14px;font-size:.85rem">
+  ℹ️ Rôle: <strong>{{ user.role_nom }}</strong>
+  {% if user.peut_valider_paiement %}<span class="badge b-ok ml-1">✅ Validation activée</span>{% endif %}
+</div>
+
+<!-- Stats -->
 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
-  <div class="card" style="flex:1;min-width:160px;padding:14px;text-align:center">
-    <div style="font-size:1.6rem;font-weight:900;color:var(--primary)" id="cnt-attente">{{ items|selectattr('statut','eq','en_attente')|list|length }}</div>
-    <div style="font-size:.78rem;color:var(--muted)">⏳ En attente</div>
+  <div class="card" style="flex:1;min-width:130px;padding:12px;text-align:center;cursor:pointer" onclick="setFilter('en_attente')">
+    <div style="font-size:1.6rem;font-weight:900;color:#d97706">{{ items|selectattr('statut','eq','en_attente')|list|length }}</div>
+    <div style="font-size:.75rem;color:var(--muted)">⏳ En attente</div>
   </div>
-  <div class="card" style="flex:1;min-width:160px;padding:14px;text-align:center">
-    <div style="font-size:1.6rem;font-weight:900;color:var(--ok)" id="cnt-paye">{{ items|selectattr('statut','eq','paye')|list|length }}</div>
-    <div style="font-size:.78rem;color:var(--muted)">✅ Payés</div>
+  <div class="card" style="flex:1;min-width:130px;padding:12px;text-align:center;cursor:pointer" onclick="setFilter('paye')">
+    <div style="font-size:1.6rem;font-weight:900;color:#16a34a">{{ items|selectattr('statut','eq','paye')|list|length }}</div>
+    <div style="font-size:.75rem;color:var(--muted)">✅ Payés</div>
   </div>
-  <div class="card" style="flex:1;min-width:160px;padding:14px;text-align:center">
-    <div style="font-size:1.6rem;font-weight:900;color:var(--danger)" id="cnt-rejete">{{ items|selectattr('statut','eq','rejete')|list|length }}</div>
-    <div style="font-size:.78rem;color:var(--muted)">❌ Rejetés</div>
+  <div class="card" style="flex:1;min-width:130px;padding:12px;text-align:center;cursor:pointer" onclick="setFilter('rejete')">
+    <div style="font-size:1.6rem;font-weight:900;color:#dc2626">{{ items|selectattr('statut','eq','rejete')|list|length }}</div>
+    <div style="font-size:.75rem;color:var(--muted)">❌ Rejetés</div>
   </div>
-  <div class="card" style="flex:1;min-width:200px;padding:14px;text-align:center">
-    <div style="font-size:1.3rem;font-weight:900;color:var(--accent)">
+  <div class="card" style="flex:1;min-width:180px;padding:12px;text-align:center;cursor:pointer" onclick="setFilter('')">
+    <div style="font-size:1.2rem;font-weight:900;color:var(--accent)">
       {{ "%.2f"|format(items|selectattr('statut','eq','en_attente')|sum(attribute='montant')) }} DH
     </div>
-    <div style="font-size:.78rem;color:var(--muted)">💰 Total en attente</div>
+    <div style="font-size:.75rem;color:var(--muted)">💰 Montant en attente — Tout afficher</div>
   </div>
 </div>
 
-<!-- Barre de filtres -->
+<!-- Filtres -->
 <div class="filter-bar">
-  <input type="text" id="searchInput" placeholder="🔍 Rechercher contribuable, N° bulletin, module..." oninput="filterBulletins()">
-  <select id="filterStatut" onchange="filterBulletins()">
-    <option value="">Tous les statuts</option>
+  <input type="text" id="searchInput" placeholder="🔍 Contribuable, N° bulletin, module..." oninput="applyFilters()">
+  <select id="filterStatut" onchange="applyFilters()">
     <option value="en_attente">⏳ En attente</option>
     <option value="paye">✅ Payés</option>
     <option value="rejete">❌ Rejetés</option>
+    <option value="">Tous les statuts</option>
   </select>
-  <select id="filterModule" onchange="filterBulletins()">
-    <option value="">Tous les modules</option>
+  <select id="filterModule" onchange="applyFilters()">
+    <option value="">Tous modules</option>
     <option value="TNB">TNB</option>
     <option value="DEBITS_BOISSONS">Débits de Boissons</option>
     <option value="STATIONNEMENT">Stationnement</option>
     <option value="ODP">ODP</option>
   </select>
+  <button class="btn btn-outline btn-sm" onclick="selectAllVisible()">☑ Tout sélectionner</button>
 </div>
 
 <!-- Liste groupée par contribuable -->
 <div id="bulletins-list">
-  {% set ctb_seen = namespace(ids=[]) %}
-  {% for ctb_nom in items|map(attribute='nom')|unique|list|sort %}
-    {% set ctb_items = items|selectattr('nom','eq',ctb_nom)|list %}
-    <div class="group-card" data-group="{{ ctb_nom }}">
-      <div class="group-header">
-        <input type="checkbox" class="group-chk" onclick="toggleGroup(this)" style="width:16px;height:16px">
-        <span>👤 <strong>{{ ctb_nom }}</strong>
-          {% set fp = ctb_items[0] %} {{ fp.prenom or '' }}
-        </span>
-        <span class="badge b-info" style="font-size:.65rem">{{ ctb_items|length }} bulletin(s)</span>
-        <span class="group-total">
-          {% set att = ctb_items|selectattr('statut','eq','en_attente')|list %}
-          {% if att %}⏳ {{ "%.2f"|format(att|sum(attribute='montant')) }} DH en attente{% endif %}
-        </span>
-      </div>
-      {% for b in ctb_items %}
-      <div class="bul-row" data-statut="{{ b.statut }}" data-module="{{ b.module }}" data-search="{{ b.nom }} {{ b.prenom or '' }} {{ b.numero_bulletin }} {{ b.module }}">
-        <input type="checkbox" class="bul-chk" value="{{ b.id }}" data-montant="{{ b.montant }}">
-        <div style="flex:0 0 130px">
-          <strong style="color:var(--primary);font-size:.82rem">{{ b.numero_bulletin }}</strong>
-          <div style="font-size:.7rem;color:var(--muted)">{{ b.date_paiement or b.date_creation[:10] }}</div>
-        </div>
-        <div style="flex:1">
-          <span class="badge b-info" style="font-size:.62rem">{{ b.module }}</span>
-          {% if b.annee %}<small style="color:var(--muted);margin-left:4px">{{ b.annee }}</small>{% endif %}
-        </div>
-        <div style="flex:0 0 110px;text-align:right">
-          <strong>{{ "%.2f"|format(b.montant) }} DH</strong>
-          <div style="font-size:.7rem;color:var(--muted)">{{ b.mode_paiement }}</div>
-        </div>
-        <div style="flex:0 0 90px;text-align:center">
-          <span class="stat-{{ b.statut }}">
-            {% if b.statut=='paye' %}✅ Payé{% elif b.statut=='en_attente' %}⏳ Attente{% else %}❌ Rejeté{% endif %}
-          </span>
-          {% if b.motif_rejet %}<div style="font-size:.65rem;color:var(--danger)">{{ b.motif_rejet }}</div>{% endif %}
-        </div>
-        <div style="flex:0 0 110px;text-align:center">
-          {% if b.numero_quittance %}
-          <span style="font-weight:800;color:var(--ok);font-size:.78rem">{{ b.numero_quittance }}</span>
-          {% if b.date_quittance %}<div style="font-size:.65rem;color:var(--muted)">{{ b.date_quittance }}</div>{% endif %}
-          {% else %}—{% endif %}
-        </div>
-        <div style="flex:0 0 auto;display:flex;gap:5px">
-          {% if b.statut=='en_attente' and user.peut_valider_paiement %}
-          <button class="btn btn-ok btn-xs" onclick="openValidate({{ b.id }}, '{{ b.numero_bulletin }}', {{ b.montant }})">✅</button>
-          <button class="btn btn-danger btn-xs" onclick="openReject({{ b.id }}, '{{ b.numero_bulletin }}')">❌</button>
-          {% elif b.statut=='en_attente' %}
-          <span class="badge b-warn" style="font-size:.6rem">⏳ Régisseur</span>
-          {% endif %}
-        </div>
-      </div>
-      {% endfor %}
+{% for ctb_nom in items|map(attribute='nom')|unique|list|sort %}
+  {% set ctb_items = items|selectattr('nom','eq',ctb_nom)|list %}
+  <div class="group-card" data-group="{{ ctb_nom }}">
+    <div class="group-header">
+      <input type="checkbox" class="group-chk" onclick="toggleGroup(this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--primary)">
+      <span>👤 <strong>{{ ctb_nom }}</strong> {{ ctb_items[0].prenom or '' }}</span>
+      <span class="badge b-info" style="font-size:.62rem">{{ ctb_items|length }} BV</span>
+      {% set att = ctb_items|selectattr('statut','eq','en_attente')|list %}
+      {% if att %}
+      <span class="stat-en_attente group-total">⏳ {{ "%.2f"|format(att|sum(attribute='montant')) }} DH</span>
+      {% endif %}
     </div>
-  {% else %}
-  <div class="card"><div class="empty-state"><span class="ei">💳</span>Aucun bulletin de versement.</div></div>
-  {% endfor %}
+    {% for b in ctb_items %}
+    <div class="bul-row"
+         data-statut="{{ b.statut }}"
+         data-module="{{ b.module }}"
+         data-search="{{ b.nom|lower }} {{ (b.prenom or '')|lower }} {{ b.numero_bulletin|lower }} {{ b.module|lower }}">
+      {% if b.statut == 'en_attente' %}
+      <input type="checkbox" class="bul-chk"
+             value="{{ b.id }}"
+             data-montant="{{ b.montant }}"
+             data-num="{{ b.numero_bulletin }}"
+             onchange="updateSelBar()">
+      {% else %}
+      <span style="width:16px;display:inline-block"></span>
+      {% endif %}
+      <!-- N° Bulletin -->
+      <div style="flex:0 0 140px">
+        <strong style="color:var(--primary)">{{ b.numero_bulletin }}</strong>
+        <div style="font-size:.7rem;color:var(--muted)">{{ b.date_paiement or b.date_creation[:10] }}</div>
+      </div>
+      <!-- Module + Année -->
+      <div style="flex:1">
+        <span class="badge b-info" style="font-size:.62rem">{{ b.module }}</span>
+        {% if b.annee %}<small style="color:var(--muted);margin-left:4px">{{ b.annee }}</small>{% endif %}
+      </div>
+      <!-- Montant -->
+      <div style="flex:0 0 110px;text-align:right">
+        <strong>{{ "%.2f"|format(b.montant) }} DH</strong>
+        <div style="font-size:.7rem;color:var(--muted)">{{ b.mode_paiement }}</div>
+      </div>
+      <!-- Statut -->
+      <div style="flex:0 0 95px;text-align:center">
+        <span class="stat-{{ b.statut }}">
+          {% if b.statut=='paye' %}✅ Payé{% elif b.statut=='en_attente' %}⏳ Attente{% else %}❌ Rejeté{% endif %}
+        </span>
+        {% if b.motif_rejet %}<div style="font-size:.65rem;color:var(--danger)">{{ b.motif_rejet }}</div>{% endif %}
+      </div>
+      <!-- Quittance -->
+      <div style="flex:0 0 120px;text-align:center">
+        {% if b.numero_quittance %}
+        <span style="font-weight:800;color:var(--ok);font-size:.78rem">{{ b.numero_quittance }}</span>
+        {% if b.date_quittance %}<div style="font-size:.65rem;color:var(--muted)">{{ b.date_quittance }}</div>{% endif %}
+        {% else %}—{% endif %}
+      </div>
+      <!-- Actions -->
+      <div style="flex:0 0 auto;display:flex;gap:5px">
+        {% if b.statut=='en_attente' and user.peut_valider_paiement %}
+        <button class="btn btn-ok btn-xs" title="Valider" onclick="openValidate({{ b.id }},'{{ b.numero_bulletin }}',{{ b.montant }})">✅</button>
+        <button class="btn btn-danger btn-xs" title="Rejeter" onclick="openReject({{ b.id }},'{{ b.numero_bulletin }}')">❌</button>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+<div class="card"><div class="empty-state"><span class="ei">💳</span>Aucun bulletin de versement.</div></div>
+{% endfor %}
 </div>
 
 <script>
-function filterBulletins(){
+// ─── Filtre par défaut : en_attente ──────────────────────────────
+window.addEventListener('DOMContentLoaded', () => applyFilters());
+
+function setFilter(val){
+  document.getElementById('filterStatut').value = val;
+  applyFilters();
+}
+
+function applyFilters(){
   const q = document.getElementById('searchInput').value.toLowerCase();
   const statut = document.getElementById('filterStatut').value;
   const module = document.getElementById('filterModule').value;
-  
   document.querySelectorAll('.group-card').forEach(gc => {
     let anyVisible = false;
     gc.querySelectorAll('.bul-row').forEach(row => {
-      const matchQ = !q || row.dataset.search.toLowerCase().includes(q);
-      const matchS = !statut || row.dataset.statut === statut;
-      const matchM = !module || row.dataset.module === module;
-      const show = matchQ && matchS && matchM;
-      row.style.display = show ? '' : 'none';
-      if(show) anyVisible = true;
+      const ok = (!q || row.dataset.search.includes(q))
+               && (!statut || row.dataset.statut === statut)
+               && (!module || row.dataset.module === module);
+      row.style.display = ok ? '' : 'none';
+      if(ok) anyVisible = true;
     });
     gc.style.display = anyVisible ? '' : 'none';
   });
+  updateSelBar();
 }
 
+// ─── Sélection ───────────────────────────────────────────────────
 function toggleGroup(chk){
   const gc = chk.closest('.group-card');
-  gc.querySelectorAll('.bul-chk').forEach(c => { c.checked = chk.checked; });
+  gc.querySelectorAll('.bul-chk').forEach(c => {
+    // Sélectionner uniquement les checkboxes visibles (non cachées par filtre)
+    if(c.closest('.bul-row').style.display !== 'none') c.checked = chk.checked;
+  });
+  updateSelBar();
 }
 
+function selectAllVisible(){
+  document.querySelectorAll('.bul-row:not([style*="display: none"]) .bul-chk').forEach(c => c.checked = true);
+  updateSelBar();
+}
+
+function clearSelection(){
+  document.querySelectorAll('.bul-chk').forEach(c => c.checked = false);
+  document.querySelectorAll('.group-chk').forEach(c => c.checked = false);
+  updateSelBar();
+}
+
+function getSelected(){
+  return Array.from(document.querySelectorAll('.bul-chk:checked'));
+}
+
+function updateSelBar(){
+  const sel = getSelected();
+  const bar = document.getElementById('sel-bar');
+  if(sel.length > 0){
+    bar.classList.add('visible');
+    document.getElementById('sel-count-n').textContent = sel.length;
+    const total = sel.reduce((s,c) => s + parseFloat(c.dataset.montant||0), 0);
+    document.getElementById('sel-count-total').textContent = total.toFixed(2) + ' DH';
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+// ─── Modals ──────────────────────────────────────────────────────
 function openValidate(id, num, montant){
-  document.getElementById('modal-val-info').innerHTML = `Bulletin <strong>${num}</strong> — Montant: <strong style="color:var(--accent)">${parseFloat(montant).toFixed(2)} DH</strong>`;
+  document.getElementById('modal-val-info').innerHTML =
+    `Bulletin <strong>${num}</strong> — <strong style="color:var(--accent)">${parseFloat(montant).toFixed(2)} DH</strong>`;
   document.getElementById('modal-val-form').action = `/bulletins/${id}/valider`;
   document.getElementById('val-quittance').value = '';
   document.getElementById('modal-valider').style.display = 'flex';
 }
 
 function openReject(id, num){
-  document.getElementById('modal-rej-info').innerHTML = `Bulletin <strong>${num}</strong> sera rejeté et la déclaration remise en statut "émis".`;
+  document.getElementById('modal-rej-info').innerHTML =
+    `Bulletin <strong>${num}</strong> — sera rejeté et la déclaration remise en statut "émis".`;
   document.getElementById('modal-rej-form').action = `/bulletins/${id}/rejeter`;
   document.getElementById('modal-rejeter').style.display = 'flex';
 }
 
-function closeModals(){
-  document.getElementById('modal-valider').style.display = 'none';
-  document.getElementById('modal-rejeter').style.display = 'none';
+function openMasse(){
+  const sel = getSelected();
+  if(!sel.length){ alert('Aucun bulletin sélectionné'); return; }
+  // Injecter les IDs cachés
+  const hiddenDiv = document.getElementById('masse-hidden-ids');
+  hiddenDiv.innerHTML = '';
+  sel.forEach(c => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = 'bulletin_ids'; inp.value = c.value;
+    hiddenDiv.appendChild(inp);
+  });
+  // Récap
+  const recap = document.getElementById('masse-recap');
+  const total = sel.reduce((s,c) => s + parseFloat(c.dataset.montant||0), 0);
+  recap.innerHTML = `<strong>${sel.length} bulletin(s) à valider :</strong><br>` +
+    sel.map(c => `• ${c.dataset.num} — ${parseFloat(c.dataset.montant).toFixed(2)} DH`).join('<br>') +
+    `<hr style="margin:8px 0"><strong>TOTAL : ${total.toFixed(2)} DH</strong>`;
+  document.getElementById('masse-info').innerHTML =
+    `<strong>${sel.length} bulletin(s)</strong> seront validés avec la même quittance.`;
+  document.getElementById('masse-quittance').value = '';
+  document.getElementById('modal-masse').style.display = 'flex';
 }
 
-['modal-valider','modal-rejeter'].forEach(id => {
-  document.getElementById(id).addEventListener('click', function(e){ if(e.target===this) closeModals(); });
+function closeModals(){
+  ['modal-valider','modal-rejeter','modal-masse'].forEach(id =>
+    document.getElementById(id).style.display = 'none');
+}
+
+// Fermer en cliquant à l'extérieur
+['modal-valider','modal-rejeter','modal-masse'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e){
+    if(e.target === this) closeModals();
+  });
 });
 </script>
 {% endblock %}

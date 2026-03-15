@@ -222,6 +222,39 @@ def rejeter_bulletin(id):
     conn.close()
     return redirect(url_for('paiements'))
 
+@app.route('/bulletins/valider-masse', methods=['POST'])
+@login_required
+def valider_bulletins_masse():
+    user = get_current_user()
+    if not user['peut_valider_paiement']:
+        flash('Accès refusé — Réservé au Régisseur', 'danger')
+        return redirect(url_for('paiements'))
+    f = request.form
+    num_quittance = f.get('numero_quittance', '').strip()
+    date_quittance = f.get('date_quittance', date.today().isoformat())
+    bulletin_ids = f.getlist('bulletin_ids')
+    if not num_quittance:
+        flash('Le numéro de quittance est obligatoire', 'danger')
+        return redirect(url_for('paiements'))
+    if not bulletin_ids:
+        flash('Aucun bulletin sélectionné', 'warn')
+        return redirect(url_for('paiements'))
+    conn = get_db()
+    count = 0
+    for bid in bulletin_ids:
+        b = conn.execute("SELECT * FROM bulletins WHERE id=? AND statut='en_attente'", (bid,)).fetchone()
+        if b:
+            conn.execute("""UPDATE bulletins 
+                SET statut='paye', regisseur_id=?, numero_quittance=?, date_quittance=?
+                WHERE id=?""", (user['id'], num_quittance, date_quittance, int(bid)))
+            conn.execute("UPDATE declarations SET statut='paye', date_paiement=? WHERE id=?",
+                         (date_quittance, b['declaration_id']))
+            count += 1
+    conn.commit()
+    conn.close()
+    flash(f'✅ {count} bulletin(s) validé(s) — Quittance N° {num_quittance}', 'success')
+    return redirect(url_for('paiements'))
+
 
 # ════════════════════════════════════════════════════════════
 #  AVIS D'IMPOSITION
