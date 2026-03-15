@@ -132,17 +132,45 @@ class SetupWizard(tk.Toplevel):
         messagebox.showerror("Erreur", "L'installation doit être complétée avant d'utiliser JIBAYAT.")
 
     def _build(self) -> None:
-        # En-tête
-        hdr = tk.Frame(self, bg=COLORS["accent"], pady=20)
-        hdr.pack(fill=tk.X)
+        # ── En-tête fixe (top) ──────────────────────────────────────
+        hdr = tk.Frame(self, bg=COLORS["accent"], pady=18)
+        hdr.pack(fill=tk.X, side=tk.TOP)
         tk.Label(hdr, text="🏛️  Configuration Initiale",
                  font=("Segoe UI", 16, "bold"), bg=COLORS["accent"], fg=COLORS["white"]).pack()
         tk.Label(hdr, text="JIBAYAT — Gestion Fiscale Communale",
                  font=FONT_MAIN, bg=COLORS["accent"], fg="#bfdbfe").pack()
 
-        body = tk.Frame(self, bg=COLORS["bg"], padx=30, pady=20)
-        body.pack(fill=tk.BOTH, expand=True)
+        # ── Bouton fixe (bottom) — packés AVANT le canvas pour rester visible ──
+        btn_frame = tk.Frame(self, bg=COLORS["bg"], pady=12, padx=30)
+        btn_frame.pack(fill=tk.X, side=tk.BOTTOM)
+        tk.Button(btn_frame, text="✅  Terminer l'installation et démarrer",
+                  bg=COLORS["accent2"], fg=COLORS["white"],
+                  font=("Segoe UI", 11, "bold"), relief="flat",
+                  padx=20, pady=12, cursor="hand2",
+                  command=self._save).pack(fill=tk.X)
 
+        # ── Canvas scrollable pour le contenu ────────────────────────
+        canvas_frame = tk.Frame(self, bg=COLORS["bg"])
+        canvas_frame.pack(fill=tk.BOTH, expand=True, side=tk.TOP)
+
+        canvas = tk.Canvas(canvas_frame, bg=COLORS["bg"], highlightthickness=0)
+        scrollbar = ttk.Scrollbar(canvas_frame, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        body = tk.Frame(canvas, bg=COLORS["bg"], padx=30, pady=20)
+        body_window = canvas.create_window((0, 0), window=body, anchor="nw")
+
+        def _on_configure(event: tk.Event) -> None:  # type: ignore[type-arg]
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            canvas.itemconfig(body_window, width=canvas.winfo_width())
+
+        body.bind("<Configure>", _on_configure)
+        canvas.bind("<Configure>", _on_configure)
+        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(-1*(e.delta//120), "units"))
+
+        # ── Champs commune ────────────────────────────────────────────
         tk.Label(body, text="INFORMATIONS DE LA COMMUNE",
                  font=("Segoe UI", 9, "bold"), bg=COLORS["bg"],
                  fg=COLORS["muted"]).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
@@ -150,9 +178,9 @@ class SetupWizard(tk.Toplevel):
         fields = [
             ("Nom de la commune (Fr) :", "ent_nom"),
             ("Nom de la commune (Ar) :", "ent_nom_ar"),
-            ("Région :", "ent_region"),
-            ("Province :", "ent_prov"),
-            ("Code Commune :", "ent_code"),
+            ("Région :",                 "ent_region"),
+            ("Province :",               "ent_prov"),
+            ("Code Commune :",           "ent_code"),
         ]
         for i, (lbl_txt, attr) in enumerate(fields, start=1):
             tk.Label(body, text=lbl_txt, font=FONT_MAIN,
@@ -163,7 +191,7 @@ class SetupWizard(tk.Toplevel):
             ent.grid(row=i, column=1, padx=10, pady=5, sticky="ew")
             setattr(self, attr, ent)
 
-        # Modules
+        # ── Modules fiscaux ───────────────────────────────────────────
         tk.Frame(body, bg=COLORS["border"], height=1).grid(
             row=7, column=0, columnspan=2, sticky="ew", pady=15)
         tk.Label(body, text="MODULES FISCAUX À ACTIVER",
@@ -188,11 +216,6 @@ class SetupWizard(tk.Toplevel):
                            font=FONT_MAIN, anchor="w").grid(
                 row=9 + idx, column=0, columnspan=2, sticky="w", pady=2)
 
-        tk.Button(self, text="✅  Terminer l'installation",
-                  bg=COLORS["accent2"], fg=COLORS["white"],
-                  font=("Segoe UI", 11, "bold"), relief="flat",
-                  padx=20, pady=12, cursor="hand2",
-                  command=self._save).pack(fill=tk.X, padx=30, pady=20)
 
     def _save(self) -> None:
         nom = self.ent_nom.get().strip()
