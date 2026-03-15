@@ -238,6 +238,10 @@ def tdb_declarer(id):
     last_decl_id = None
     last_total = 0.0
 
+    # Calculer le total global de TOUS les trimestres déclarés
+    total_global = 0.0
+    decls_ids_creees = []
+
     for trim_key in trims_selectionnes:
         try:
             annee_str, trim_str = trim_key.split('_')
@@ -251,12 +255,14 @@ def tdb_declarer(id):
             'SELECT id FROM declarations WHERE module="DEBITS_BOISSONS" AND reference_id=? AND annee=? AND trimestre=? AND statut!="annule"',
             (id, annee, trim)).fetchone()
         if existing:
+            flash(f'⚠️ T{trim} {annee} déjà déclaré — ignoré', 'warn')
             continue
 
         base_ht = float(f.get(f'base_{annee}_{trim}', 0) or 0)
         calc = calcul_trimestre(base_ht, taux, annee, trim, date_decl, amende_pct)
 
         total = calc['total']
+        total_global += total
         statut_decl = 'sous_seuil' if total < 200 else 'emis'
         num = f"DCL-TDB{datetime.now().year}{n_dcl:05d}"
         n_dcl += 1
@@ -270,33 +276,38 @@ def tdb_declarer(id):
             (num, 'DEBITS_BOISSONS', id, contrib_id, 1, annee, trim,
              base_ht, taux, calc['principal'], calc['penalite'], calc['majoration'],
              calc['amende'], total, statut_decl, date_decl, calc['echeance'], user['id']))
-        last_decl_id = cur.lastrowid
-        last_total = total
+        if statut_decl == 'emis':
+            decls_ids_creees.append(cur.lastrowid)
         decls_creees += 1
 
-    # Créer un seul bulletin pour la dernière déclaration
-    if num_bulletin and last_decl_id and last_total >= 200:
+    # Créer UN SEUL bulletin pour le TOTAL GLOBAL de tous les trimestres
+    if num_bulletin and decls_ids_creees and total_global >= 200:
+        # Le bulletin référence la première déclaration (la plus ancienne)
+        first_decl_id = decls_ids_creees[0]
         try:
             conn.execute(
                 '''INSERT INTO bulletins (numero_bulletin,declaration_id,contribuable_id,
                    commune_id,montant,mode_paiement,date_paiement,agent_id,statut)
                    VALUES (?,?,?,?,?,?,?,?,?)''',
-                (num_bulletin, last_decl_id, contrib_id, 1, last_total,
+                (num_bulletin, first_decl_id, contrib_id, 1, round(total_global, 2),
                  'bulletin_manuel', date_decl, user['id'], 'en_attente'))
         except Exception as e:
             flash(f'⚠️ Bulletin non créé : {e}', 'warn')
+    elif num_bulletin and decls_creees > 0 and total_global < 200:
+        flash('ℹ️ Total inférieur à 200 DH — aucun bulletin créé (sous seuil)', 'info')
 
     conn.commit(); conn.close()
-    flash(f'✅ {decls_creees} déclaration(s) trimestrielle(s) enregistrée(s). Bulletin de versement envoyé.', 'success')
+    flash(f'✅ {decls_creees} déclaration(s) enregistrée(s) — Total : {total_global:.2f} DH — Bulletin en attente.', 'success')
     return redirect(url_for('tdb.tdb_paiement', id=id))
 
 
 # ═══════════════════════════════════════════════════════════
-# DÉCLARATION ANNUELLE (renseigner les montants de l'année précédente)
+# DÉCLARATION ANNUELLE — récapitulatif des paiements N-1
 # ═══════════════════════════════════════════════════════════
-@bp.route('/debits-boissons/<int:id>/declaration-annuelle', methods=['GET', 'POST'])
+@bp.route('/debits-boissons/<int:id>/declaration-annuelle')
 @login_required
 def tdb_declaration_annuelle(id):
+    """Affiche le récapitulatif annuel des déclarations DÉJÀ enregistrées (pour impression/archive)."""
     user = get_current_user()
     conn = get_db()
     etab = conn.execute(
@@ -308,42 +319,7 @@ def tdb_declaration_annuelle(id):
     tarifs = get_tarifs_module('DEBITS_BOISSONS')
     taux = float(tarifs[0]['valeur']) if tarifs else 10.0
 
-    if request.method == 'POST':
-        f = request.form
-        annee_decl = int(f.get('annee_declaration', date.today().year - 1))
-        date_decl = f.get('date_declaration', date.today().isoformat())
-        montants = {}
-        total_annuel = 0.0
-        for t in range(1, 5):
-            base = float(f.get(f'base_t{t}', 0) or 0)
-            montants[t] = base
-            total_annuel += base
-
-        # Générer numéro de déclaration annuelle
-        n = conn.execute("SELECT COUNT(*) as c FROM declarations_annuelles_tdb").fetchone()['c'] + 1 if conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='declarations_annuelles_tdb'").fetchone() else 1
-
-        # Stocker la déclaration annuelle dans declarations_annuelles_tdb
-        try:
-            conn.execute(
-                '''INSERT OR IGNORE INTO declarations_annuelles_tdb
-                   (numero,etablissement_id,contribuable_id,commune_id,annee,
-                    base_t1,base_t2,base_t3,base_t4,total_base,taux,montant_du,
-                    date_declaration,agent_id,statut)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                (f"DA-TDB{datetime.now().year}{n:05d}", id, etab['ctb_id'], 1, annee_decl,
-                 montants[1], montants[2], montants[3], montants[4],
-                 total_annuel, taux, round(total_annuel * taux / 100, 2),
-                 date_decl, user['id'], 'soumise'))
-        except Exception:
-            pass
-        conn.commit(); conn.close()
-        flash(f'✅ Déclaration annuelle {annee_decl} enregistrée.', 'success')
-        return redirect(url_for('tdb.tdb_paiement', id=id))
-
-    # GET — afficher formulaire et générer le PDF
-    annee_decl = request.args.get('annee', str(date.today().year - 1))
-    annee_decl = int(annee_decl)
+    annee_decl = int(request.args.get('annee', date.today().year - 1))
 
     # Récupérer les déclarations trimestrielles déjà saisies pour cette année
     decls_trim = {r['trimestre']: r for r in conn.execute(

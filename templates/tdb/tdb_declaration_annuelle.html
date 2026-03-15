@@ -1,92 +1,116 @@
 {% extends 'base.html' %}
-{% block title %}Déclaration Annuelle TDB — {{ annee }}{% endblock %}
-{% block page_title %}📋 Déclaration Annuelle — Débits de Boissons {{ annee }}{% endblock %}
+{% block title %}Déclaration Annuelle — {{ etab.nom_etablissement }} — {{ annee }}{% endblock %}
+{% block page_title %}📋 Déclaration Annuelle {{ annee }} — {{ etab.nom_etablissement }}{% endblock %}
 {% block content %}
 <div class="df gap-2 mb-3">
   <a href="{{ url_for('tdb.tdb_paiement', id=etab.id) }}" class="btn btn-outline btn-sm">← Paiement</a>
-  <a href="{{ url_for('tdb.tdb_declaration_annuelle', id=etab.id, annee=annee, pdf=1) }}" target="_blank"
-     class="btn btn-outline btn-sm">🖨️ Imprimer PDF vierge</a>
+  <a href="{{ url_for('tdb.tdb_declaration_annuelle', id=etab.id, annee=annee) }}?print=1"
+     target="_blank" class="btn btn-outline btn-sm" onclick="this.href=window.location.href+'&print=1'">🖨️ Imprimer PDF</a>
+  {# Sélecteur d'année #}
+  {% set annee_courante = today[:4]|int %}
+  {% for y in range(annee_courante - 1, annee_courante - 5, -1) %}
+  <a href="{{ url_for('tdb.tdb_declaration_annuelle', id=etab.id, annee=y) }}"
+     class="btn btn-xs {{ 'btn-primary' if y == annee else 'btn-outline' }}">{{ y }}</a>
+  {% endfor %}
 </div>
 
-<div class="card" style="max-width:680px;margin:0 auto">
+<div class="card" style="max-width:720px;margin:0 auto">
   <div class="card-header">
-    <h3>📋 Déclaration Annuelle — Recettes {{ annee }}</h3>
+    <h3>📋 Récapitulatif Annuel — Exercice {{ annee }}</h3>
+    <span class="badge b-info" style="font-size:.7rem">N° {{ n_decl }}</span>
   </div>
   <div class="card-body">
-    <div class="alert alert-info mb-3">
-      <strong>ℹ️ Règle :</strong> La déclaration annuelle doit être déposée avant le <strong>1er Avril {{ annee + 1 }}</strong>.
-      Elle porte sur les recettes réalisées durant l'année <strong>{{ annee }}</strong>.
+
+    {# Explication #}
+    <div class="alert alert-info mb-3" style="font-size:.85rem">
+      <strong>📌 Déclaration Annuelle :</strong> Récapitulatif des déclarations trimestrielles
+      <strong>déjà enregistrées</strong> pour l'exercice <strong>{{ annee }}</strong>.
+      Elle est distincte de la <em>Déclaration du Chiffre d'Affaires</em> (formulaire à remplir manuellement par le redevable).
     </div>
 
-    <form method="post" action="{{ url_for('tdb.tdb_declaration_annuelle', id=etab.id) }}">
-      <input type="hidden" name="annee_declaration" value="{{ annee }}">
-
-      <div class="form-group mb-3">
-        <label>Date de dépôt</label>
-        <input type="date" name="date_declaration" value="{{ today }}" required>
+    {# Infos établissement #}
+    <div style="background:var(--bg);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:.84rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div><span class="text-muted" style="font-size:.7rem">Établissement</span><div><strong>{{ etab.nom_etablissement }}</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">N° Autorisation</span><div>{{ etab.numero_autorisation or '—' }}</div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Contribuable</span><div><strong>{{ etab.nom }} {{ etab.prenom or etab.raison_sociale or '' }}</strong></div></div>
+        {% if etab.cin %}<div><span class="text-muted" style="font-size:.7rem">CIN</span><div>{{ etab.cin }}</div></div>{% endif %}
+        <div><span class="text-muted" style="font-size:.7rem">Taux TDB</span><div><strong>{{ "%.0f"|format(taux) }}%</strong></div></div>
+        <div><span class="text-muted" style="font-size:.7rem">Exercice</span><div><strong>{{ annee }}</strong></div></div>
       </div>
+    </div>
 
-      <div style="font-weight:700;margin-bottom:10px;color:var(--primary)">Recettes par trimestre ({{ annee }}) :</div>
-
-      {% set trims_labels = {1:'T1 — Janvier à Mars', 2:'T2 — Avril à Juin', 3:'T3 — Juillet à Septembre', 4:'T4 — Octobre à Décembre'} %}
-      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+    {# Tableau des trimestres #}
+    {% set TRIM_LABELS = {1:'T1 — Janvier à Mars', 2:'T2 — Avril à Juin', 3:'T3 — Juillet à Septembre', 4:'T4 — Octobre à Décembre'} %}
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+      <thead>
+        <tr style="background:var(--primary);color:#fff">
+          <th style="padding:9px 12px;text-align:right">Trimestre</th>
+          <th style="padding:9px 12px;text-align:right">Recettes HT déclarées</th>
+          <th style="padding:9px 12px;text-align:right">Rôle ({{ "%.0f"|format(taux) }}%)</th>
+          <th style="padding:9px 12px;text-align:right">Pénalités</th>
+          <th style="padding:9px 12px;text-align:right">Total dû</th>
+          <th style="padding:9px 12px;text-align:center">Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set totals = namespace(base=0, principal=0, pen=0, total=0) %}
         {% for t in range(1, 5) %}
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:{{ '1px solid var(--border)' if t < 4 else 'none' }}">
-          <div style="width:220px;font-weight:600;font-size:.88rem">{{ trims_labels[t] }}</div>
-          <div style="flex:1">
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="number" name="base_t{{ t }}" step="0.01" min="0"
-                     placeholder="Recettes HT (DH)..."
-                     value="{{ '%.2f'|format(decls_trim[t].base_calcul) if t in decls_trim else '' }}"
-                     style="flex:1;padding:8px;font-size:.9rem"
-                     oninput="calcAnnuel()">
-              <div style="font-size:.78rem;text-align:right;min-width:90px">
-                <div style="color:var(--muted)">→ Rôle ({{ "%.0f"|format(taux) }}%)</div>
-                <strong id="role-t{{ t }}" style="color:var(--primary)">0.00 DH</strong>
-              </div>
-            </div>
-          </div>
-          {% if t in decls_trim %}
-          <div>
-            <span class="badge {% if decls_trim[t].statut == 'paye' %}b-ok{% else %}b-warn{% endif %}">
-              {{ decls_trim[t].statut }}
-            </span>
-          </div>
-          {% endif %}
-        </div>
+        {% if t in decls_trim %}
+          {% set d = decls_trim[t] %}
+          {% set totals.base = totals.base + (d.base_calcul or 0) %}
+          {% set totals.principal = totals.principal + (d.montant_principal or 0) %}
+          {% set totals.pen = totals.pen + (d.penalite_retard or 0) + (d.majoration or 0) + (d.amende_non_declaration or 0) %}
+          {% set totals.total = totals.total + (d.montant_total or 0) %}
+        <tr style="border-bottom:1px solid var(--border);{% if d.statut == 'paye' %}background:#f0fdf4{% elif d.statut == 'emis' %}background:#fffbf0{% endif %}">
+          <td style="padding:9px 12px;font-weight:700">{{ TRIM_LABELS[t] }}</td>
+          <td style="padding:9px 12px;text-align:right">{{ "%.2f"|format(d.base_calcul or 0) }} DH</td>
+          <td style="padding:9px 12px;text-align:right;color:var(--primary)">{{ "%.2f"|format(d.montant_principal or 0) }} DH</td>
+          <td style="padding:9px 12px;text-align:right;color:{% if (d.penalite_retard or 0) > 0 %}var(--danger){% else %}var(--muted){% endif %}">
+            {{ "%.2f"|format((d.penalite_retard or 0) + (d.majoration or 0) + (d.amende_non_declaration or 0)) }} DH
+          </td>
+          <td style="padding:9px 12px;text-align:right;font-weight:800">{{ "%.2f"|format(d.montant_total or 0) }} DH</td>
+          <td style="padding:9px 12px;text-align:center">
+            {% if d.statut == 'paye' %}
+            <span class="badge b-ok">✅ Payé</span>
+            {% elif d.statut == 'emis' %}
+            <span class="badge b-warn">⏳ Émis</span>
+            {% else %}
+            <span class="badge b-sec">{{ d.statut }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr style="border-bottom:1px solid var(--border);opacity:.45">
+          <td style="padding:9px 12px;font-weight:600;color:var(--muted)">{{ TRIM_LABELS[t] }}</td>
+          <td colspan="5" style="padding:9px 12px;text-align:center;color:var(--muted);font-style:italic">— Non déclaré —</td>
+        </tr>
+        {% endif %}
         {% endfor %}
-        <!-- Total -->
-        <div style="display:flex;justify-content:space-between;padding:12px 14px;background:var(--card);border-top:2px solid var(--border)">
-          <strong>TOTAL Recettes HT {{ annee }}</strong>
-          <strong id="total-base" style="color:var(--primary)">0.00 DH</strong>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:8px 14px;background:#e8eeff">
-          <strong>TOTAL Rôle dû ({{ "%.0f"|format(taux) }}%)</strong>
-          <strong id="total-role" style="color:#1e3a5f;font-size:1.05rem">0.00 DH</strong>
-        </div>
-      </div>
+      </tbody>
+      <tfoot>
+        <tr style="background:linear-gradient(135deg,#1e3a5f,#2a5298);color:#fff;font-weight:900">
+          <td style="padding:10px 12px">TOTAL ANNUEL {{ annee }}</td>
+          <td style="padding:10px 12px;text-align:right">{{ "%.2f"|format(totals.base) }} DH</td>
+          <td style="padding:10px 12px;text-align:right">{{ "%.2f"|format(totals.principal) }} DH</td>
+          <td style="padding:10px 12px;text-align:right;color:#fca5a5">{{ "%.2f"|format(totals.pen) }} DH</td>
+          <td style="padding:10px 12px;text-align:right;font-size:1.05rem;color:#fde68a">{{ "%.2f"|format(totals.total) }} DH</td>
+          <td style="padding:10px 12px;text-align:center">
+            <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">
+              {{ nb_payes }}/{{ decls_trim|length }} payé(s)
+            </span>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
 
-      <div class="modal-footer">
-        <a href="{{ url_for('tdb.tdb_paiement', id=etab.id) }}" class="btn btn-outline">Annuler</a>
-        <button type="submit" class="btn btn-primary">💾 Enregistrer Déclaration Annuelle</button>
-      </div>
-    </form>
+    {% if not decls_trim %}
+    <div class="empty-state"><span class="ei">📭</span>Aucune déclaration pour l'exercice {{ annee }}.</div>
+    {% endif %}
+
+    <div class="df gap-2 mt-4">
+      <a href="{{ url_for('tdb.tdb_paiement', id=etab.id) }}" class="btn btn-outline">← Retour Paiement</a>
+    </div>
   </div>
 </div>
-
-<script>
-const TAUX = {{ taux }};
-function calcAnnuel() {
-  let totalBase = 0;
-  for (let t = 1; t <= 4; t++) {
-    const v = parseFloat(document.querySelector(`[name="base_t${t}"]`).value) || 0;
-    totalBase += v;
-    const role = Math.round(v * TAUX / 100 * 100) / 100;
-    document.getElementById(`role-t${t}`).textContent = role.toFixed(2) + ' DH';
-  }
-  document.getElementById('total-base').textContent = totalBase.toFixed(2) + ' DH';
-  document.getElementById('total-role').textContent = (Math.round(totalBase * TAUX / 100 * 100) / 100).toFixed(2) + ' DH';
-}
-window.addEventListener('load', calcAnnuel);
-</script>
 {% endblock %}
