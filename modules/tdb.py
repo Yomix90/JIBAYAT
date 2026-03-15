@@ -196,18 +196,25 @@ def tdb_paiement(id):
         by_year[t['annee']].append(t)
     non_payes_by_year = dict(sorted(by_year.items()))
 
-    # Paramètres
-    params_m = conn.execute(
-        "SELECT * FROM parametres_calcul WHERE module='DEBITS_BOISSONS' ORDER BY code").fetchall()
+    # Déclarations annuelles existantes (pour afficher le statut par année)
+    try:
+        decls_ann = conn.execute(
+            'SELECT annee FROM declarations_annuelles_tdb WHERE etablissement_id=?', (id,)).fetchall()
+        decls_annuelles_par_annee = {r['annee'] for r in decls_ann}
+    except Exception:
+        decls_annuelles_par_annee = set()
+
     commune_row = conn.execute('SELECT * FROM communes LIMIT 1').fetchone()
     conn.close()
 
     return render_template('tdb/tdb_paiement.html', user=user, etab=etab,
                            declarations=declarations, non_payes_by_year=non_payes_by_year,
-                           tarifs=tarifs, params=params_m, today=today_str,
+                           tarifs=tarifs, today=today_str,
                            amende_pct=amende_pct, autres_odp=autres_odp,
+                           decls_annuelles_par_annee=decls_annuelles_par_annee,
                            commune=commune_row['nom'] if commune_row else '',
                            TRIMESTRES=TRIMESTRES)
+
 
 
 # ═══════════════════════════════════════════════════════════
@@ -231,16 +238,15 @@ def tdb_declarer(id):
     amende_pct = get_param('DEBITS_BOISSONS', 'AMENDE_NON_DECLARATION', 15)
     taux = float(tarifs[0]['valeur']) if tarifs else 10.0
 
-    # Récupérer les trimestres sélectionnés avec leurs montants déclarés
-    trims_selectionnes = f.getlist('trims')  # format: "annee_trim"
+    # Trier les trimestres sélectionnés par ordre chronologique (anciens en premier)
+    trims_selectionnes = sorted(f.getlist('trims'))  # "annee_trim" → tri lexicographique = chronologique
     n_dcl = conn.execute("SELECT COUNT(*) as c FROM declarations").fetchone()['c'] + 1
     decls_creees = 0
-    last_decl_id = None
-    last_total = 0.0
-
-    # Calculer le total global de TOUS les trimestres déclarés
     total_global = 0.0
-    decls_ids_creees = []
+    bulletins_crees = []
+
+    # Suivre les années pour n'appliquer l'amende qu'une seule fois par an
+    annees_amende_appliquee = set()
 
     for trim_key in trims_selectionnes:
         try:
@@ -259,9 +265,25 @@ def tdb_declarer(id):
             continue
 
         base_ht = float(f.get(f'base_{annee}_{trim}', 0) or 0)
-        calc = calcul_trimestre(base_ht, taux, annee, trim, date_decl, amende_pct)
 
-        total = calc['total']
+        # Calcul trimestre, SANS amende d'abord
+        principal = round(base_ht * taux / 100, 2)
+        mois, jour = DEADLINE_TRIM[trim]
+        try:
+            ech = date(annee, mois, jour).isoformat()
+        except ValueError:
+            ech = date(annee, mois, 28).isoformat()
+
+        pen, maj = 0.0, 0.0
+        amende = 0.0
+        if principal > 0 and date_decl > ech:
+            # L'amende (non-déclaration) s'applique UNE SEULE FOIS par année
+            if annee not in annees_amende_appliquee:
+                amende = max(round(principal * amende_pct / 100, 2), 500)
+                annees_amende_appliquee.add(annee)
+            pen, maj = calculer_penalites(principal, ech, date_decl, 'DEBITS_BOISSONS')
+
+        total = round(principal + pen + maj + amende, 2)
         total_global += total
         statut_decl = 'sous_seuil' if total < 200 else 'emis'
         num = f"DCL-TDB{datetime.now().year}{n_dcl:05d}"
@@ -274,31 +296,32 @@ def tdb_declarer(id):
                 statut,date_declaration,date_echeance,agent_id)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
             (num, 'DEBITS_BOISSONS', id, contrib_id, 1, annee, trim,
-             base_ht, taux, calc['principal'], calc['penalite'], calc['majoration'],
-             calc['amende'], total, statut_decl, date_decl, calc['echeance'], user['id']))
-        if statut_decl == 'emis':
-            decls_ids_creees.append(cur.lastrowid)
+             base_ht, taux, principal, pen, maj,
+             amende, total, statut_decl, date_decl, ech, user['id']))
+        decl_id = cur.lastrowid
         decls_creees += 1
 
-    # Créer UN SEUL bulletin pour le TOTAL GLOBAL de tous les trimestres
-    if num_bulletin and decls_ids_creees and total_global >= 200:
-        # Le bulletin référence la première déclaration (la plus ancienne)
-        first_decl_id = decls_ids_creees[0]
-        try:
-            conn.execute(
-                '''INSERT INTO bulletins (numero_bulletin,declaration_id,contribuable_id,
-                   commune_id,montant,mode_paiement,date_paiement,agent_id,statut)
-                   VALUES (?,?,?,?,?,?,?,?,?)''',
-                (num_bulletin, first_decl_id, contrib_id, 1, round(total_global, 2),
-                 'bulletin_manuel', date_decl, user['id'], 'en_attente'))
-        except Exception as e:
-            flash(f'⚠️ Bulletin non créé : {e}', 'warn')
-    elif num_bulletin and decls_creees > 0 and total_global < 200:
+        # Créer UN bulletin par trimestre (tous avec le même N° BV)
+        # → La validation en cascade marchera grâce au numero_bulletin partagé
+        if num_bulletin and statut_decl == 'emis':
+            try:
+                conn.execute(
+                    '''INSERT INTO bulletins (numero_bulletin,declaration_id,contribuable_id,
+                       commune_id,montant,mode_paiement,date_paiement,agent_id,statut)
+                       VALUES (?,?,?,?,?,?,?,?,?)''',
+                    (num_bulletin, decl_id, contrib_id, 1, total,
+                     'bulletin_manuel', date_decl, user['id'], 'en_attente'))
+                bulletins_crees.append(trim_key)
+            except Exception as e:
+                flash(f'⚠️ Bulletin T{trim}/{annee} non créé : {e}', 'warn')
+
+    if num_bulletin and decls_creees > 0 and not bulletins_crees:
         flash('ℹ️ Total inférieur à 200 DH — aucun bulletin créé (sous seuil)', 'info')
 
     conn.commit(); conn.close()
-    flash(f'✅ {decls_creees} déclaration(s) enregistrée(s) — Total : {total_global:.2f} DH — Bulletin en attente.', 'success')
+    flash(f'✅ {decls_creees} déclaration(s) enregistrée(s) — Total : {total_global:.2f} DH — {len(bulletins_crees)} bulletin(s) en attente de validation.', 'success')
     return redirect(url_for('tdb.tdb_paiement', id=id))
+
 
 
 # ═══════════════════════════════════════════════════════════

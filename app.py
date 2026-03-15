@@ -192,15 +192,28 @@ def valider_bulletin(id):
     conn = get_db()
     b = conn.execute('SELECT * FROM bulletins WHERE id=?', (id,)).fetchone()
     if b:
+        # Valider CE bulletin
         conn.execute("""UPDATE bulletins 
             SET statut='paye', regisseur_id=?, numero_quittance=?, date_quittance=?
             WHERE id=?""", (user['id'], num_quittance, date_quittance, id))
         conn.execute("UPDATE declarations SET statut='paye', date_paiement=? WHERE id=?",
                      (date_quittance, b['declaration_id']))
+        # Valider aussi tous les autres bulletins avec le même numero_bulletin
+        # (cas multi-trimestres TDB créés avec le même N° de BV)
+        autres = conn.execute(
+            "SELECT id, declaration_id FROM bulletins WHERE numero_bulletin=? AND id!=? AND statut='en_attente'",
+            (b['numero_bulletin'], id)).fetchall()
+        for ab in autres:
+            conn.execute("UPDATE bulletins SET statut='paye', regisseur_id=?, numero_quittance=?, date_quittance=? WHERE id=?",
+                         (user['id'], num_quittance, date_quittance, ab['id']))
+            conn.execute("UPDATE declarations SET statut='paye', date_paiement=? WHERE id=?",
+                         (date_quittance, ab['declaration_id']))
         conn.commit()
-        flash(f'✅ Paiement validé — Quittance N° {num_quittance}', 'success')
+        total_val = 1 + len(autres)
+        flash(f'✅ Paiement validé — Quittance N° {num_quittance} — {total_val} déclaration(s) soldée(s)', 'success')
     conn.close()
     return redirect(url_for('paiements'))
+
 
 @app.route('/bulletins/<int:id>/rejeter', methods=['POST'])
 @login_required

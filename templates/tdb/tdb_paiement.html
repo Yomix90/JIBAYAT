@@ -3,274 +3,360 @@
 {% block page_title %}🍺 Paiement — {{ etab.nom_etablissement }}{% endblock %}
 {% block extra_head %}
 <style>
-.trim-card { border:2px solid var(--border);border-radius:10px;padding:14px 16px;
-  transition:all .2s;cursor:pointer;position:relative; }
-.trim-card:hover { border-color:var(--accent);box-shadow:0 4px 16px rgba(0,0,0,.08); }
-.trim-card.selected { border-color:var(--primary);background:rgba(59,130,246,.06);box-shadow:0 0 0 3px rgba(59,130,246,.18); }
-.trim-card.en-retard { border-left:4px solid var(--danger); }
-.trim-card input[type=checkbox] { position:absolute;top:12px;right:12px;width:18px;height:18px;accent-color:var(--primary); }
-.trim-card .base-input { margin-top:10px;display:none; }
-.trim-card.selected .base-input { display:block; }
-.year-group { margin-bottom:20px; }
-.year-label { font-size:.8rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px; }
-.trims-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px; }
-.calc-bar { background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;
-  margin-top:12px;display:none; }
-.calc-row { display:flex;justify-content:space-between;font-size:.83rem;padding:2px 0; }
-.calc-row.total { font-weight:800;font-size:.95rem;border-top:1px solid var(--border);padding-top:6px;margin-top:4px; }
-.odp-badge { background:var(--card);border:1px solid var(--border);border-radius:8px;
-  padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:.82rem; }
+/* ─── En-tête contribuable ───────────────────────── */
+.ctb-bar { background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:10px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:.82rem; }
+.ctb-bar .ctb-item { display:flex;flex-direction:column; }
+.ctb-bar .ctb-lbl { font-size:.65rem;text-transform:uppercase;color:var(--muted);font-weight:700; }
+.ctb-bar .ctb-val { font-weight:700; }
+
+/* ─── Groupe d'année ─────────────────────────────── */
+.year-block { border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden; }
+.year-head { display:flex;align-items:center;gap:8px;padding:9px 12px;
+  background:var(--bg);cursor:pointer;border-bottom:1px solid var(--border);
+  user-select:none;transition:background .15s; }
+.year-head:hover { background:rgba(37,99,235,.04); }
+.year-toggle { font-size:.75rem;color:var(--muted);transition:transform .25s; }
+.year-toggle.open { transform:rotate(180deg); }
+.year-content { padding:10px 10px 8px; }
+.year-content.collapsed { display:none; }
+.year-label { font-weight:900;font-size:.92rem;color:var(--primary); }
+.year-badge-retard { font-size:.62rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 6px;font-weight:700; }
+.year-badge-ok { font-size:.62rem;background:#dcfce7;color:#166534;border-radius:4px;padding:2px 6px;font-weight:700; }
+
+/* ─── Sélection année ───────────────────────────── */
+.btn-sel-year { font-size:.72rem;padding:3px 8px;border:1px solid var(--primary);
+  color:var(--primary);background:transparent;border-radius:5px;cursor:pointer;
+  transition:all .15s;font-weight:600; }
+.btn-sel-year:hover { background:var(--primary);color:#fff; }
+
+/* ─── Info déclaration annuelle ──────────────────── */
+.decl-ann-tag { font-size:.7rem;padding:3px 8px;border-radius:5px;font-weight:700;
+  display:inline-flex;align-items:center;gap:4px; }
+.decl-ann-tag.ok { background:#dcfce7;color:#166534; }
+.decl-ann-tag.manquante { background:#fee2e2;color:#991b1b; }
+.decl-ann-tag.btn-link { cursor:pointer;border:1px dashed var(--primary);color:var(--primary);
+  background:transparent;text-decoration:none; }
+.decl-ann-tag.btn-link:hover { background:var(--primary);color:#fff; }
+
+/* ─── Cartes trimestres compactes ────────────────── */
+.trims-row { display:grid;grid-template-columns:repeat(4,1fr);gap:7px; }
+.tc { border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;
+  cursor:pointer;transition:all .18s;position:relative; }
+.tc:hover { border-color:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.07); }
+.tc.sel { border-color:var(--primary);background:rgba(37,99,235,.07);
+  box-shadow:0 0 0 2px rgba(37,99,235,.2); }
+.tc.retard { border-left:3px solid var(--danger); }
+.tc.retard.sel { border-left-color:var(--danger); }
+.tc input[type=checkbox] { position:absolute;top:6px;right:6px;
+  width:14px;height:14px;accent-color:var(--primary); }
+.tc-num { font-weight:900;font-size:.9rem;color:var(--primary); }
+.tc-label { font-size:.65rem;color:var(--muted); }
+.tc-badge { font-size:.6rem;display:inline-block;margin-top:2px;padding:1px 5px;
+  border-radius:3px;font-weight:700; }
+.tc-badge.retard { background:#fee2e2;color:#991b1b; }
+
+/* ─── Saisie recettes (visible si sélectionné) ───── */
+.tc-input { margin-top:6px;display:none; }
+.tc.sel .tc-input { display:block; }
+.tc-input input { width:100%;padding:5px 7px;font-size:.8rem;font-weight:700;
+  border:1.5px solid var(--accent);border-radius:5px;box-sizing:border-box; }
+.tc-calc { font-size:.68rem;margin-top:4px;line-height:1.7; }
+.tc-calc .p-line { color:var(--muted); }
+.tc-calc .pen-line { color:var(--danger);font-weight:700; }
+.tc-calc .tot-line { font-weight:900;color:var(--primary);border-top:1px solid var(--border);padding-top:2px;margin-top:2px; }
+
+/* ─── Total global + boutons ─────────────────────── */
+.grand-bar { background:linear-gradient(135deg,#1e3a5f,#2a5298);color:#fff;
+  border-radius:9px;padding:12px 16px;margin-top:10px;
+  display:none;justify-content:space-between;align-items:center; }
+.grand-bar.vis { display:flex; }
+.action-bar { display:none;margin-top:8px;gap:8px; }
+.action-bar.vis { display:flex; }
+
+/* ─── Historique compact ─────────────────────────── */
+.hist-table { font-size:.78rem; }
 </style>
 {% endblock %}
 {% block content %}
 
-<!-- Breadcrumb -->
-<div class="df gap-2 mb-3">
-  <a href="{{ url_for('tdb.tdb_liste') }}" class="btn btn-outline btn-sm">← Liste TDB</a>
+<!-- Boutons navigation -->
+<div class="df gap-2 mb-3 flex-wrap">
+  <a href="{{ url_for('tdb.tdb_liste') }}" class="btn btn-outline btn-sm">← Liste</a>
   <a href="{{ url_for('tdb.tdb_detail', id=etab.id) }}" class="btn btn-outline btn-sm">🔍 Fiche</a>
-  {% if etab.nb_non_paye is defined and etab.nb_non_paye > 0 %}
   <a href="{{ url_for('tdb.tdb_avis', id=etab.id) }}" target="_blank"
-     class="btn btn-xs" style="background:#c8a84b;color:#fff;padding:7px 12px">📜 Avis Non-Paiement</a>
+     class="btn btn-xs" style="background:#c8a84b;color:#fff;padding:7px 12px">📜 Avis</a>
+</div>
+
+<!-- Barre contribuable compacte -->
+<div class="ctb-bar">
+  <div class="ctb-item"><span class="ctb-lbl">Établissement</span><span class="ctb-val">🍺 {{ etab.nom_etablissement }}</span></div>
+  <div class="ctb-item"><span class="ctb-lbl">Contribuable</span><span class="ctb-val">{{ etab.nom }} {{ etab.prenom or etab.raison_sociale or '' }}</span></div>
+  {% if etab.cin %}<div class="ctb-item"><span class="ctb-lbl">CIN</span><span class="ctb-val">🪪 {{ etab.cin }}</span></div>{% endif %}
+  {% if etab.rc %}<div class="ctb-item"><span class="ctb-lbl">RC</span><span class="ctb-val">{{ etab.rc }}</span></div>{% endif %}
+  <div class="ctb-item"><span class="ctb-lbl">Type</span><span class="badge b-info">{{ etab.type_etablissement }}</span></div>
+  <div class="ctb-item"><span class="ctb-lbl">N° Aut.</span><span class="ctb-val">{{ etab.numero_autorisation or '—' }}</span></div>
+  {% if etab.telephone %}<div class="ctb-item"><span class="ctb-lbl">Tél</span><span class="ctb-val">{{ etab.telephone }}</span></div>{% endif %}
+  {% if autres_odp %}
+  <div class="ctb-item"><span class="ctb-lbl">ODP liés</span>
+    <span class="ctb-val">
+      {% for o in autres_odp %}<a href="{{ url_for('occupation.odp_detail', id=o.id) }}" class="btn btn-xs btn-outline">{{ o.type_occupation or 'ODP' }} #{{ o.numero }}</a>{% endfor %}
+    </span>
+  </div>
   {% endif %}
-  <a href="{{ url_for('tdb.tdb_declaration_annuelle', id=etab.id) }}"
-     class="btn btn-outline btn-sm">📋 Déclaration Annuelle</a>
 </div>
 
-<!-- Infos contribuable -->
-<div class="card mb-3">
-  <div class="card-header">
-    <h3>🍺 {{ etab.nom_etablissement }}
-      <span class="badge b-{{ 'ok' if etab.statut=='actif' else 'danger' }}" style="font-size:.7rem">{{ etab.statut }}</span>
-    </h3>
-    <a href="{{ url_for('tdb.tdb_avis', id=etab.id) }}" target="_blank"
-       class="btn btn-xs" style="background:#c8a84b;color:#fff">📜 Avis</a>
-  </div>
-  <div class="card-body" style="font-size:.84rem">
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
-      <div><span class="text-muted" style="font-size:.7rem">Contribuable</span>
-        <div><strong>{{ etab.nom }} {{ etab.prenom or etab.raison_sociale or '' }}</strong></div></div>
-      {% if etab.cin %}<div><span class="text-muted" style="font-size:.7rem">CIN</span><div>🪪 {{ etab.cin }}</div></div>{% endif %}
-      {% if etab.rc %}<div><span class="text-muted" style="font-size:.7rem">RC</span><div>{{ etab.rc }}</div></div>{% endif %}
-      <div><span class="text-muted" style="font-size:.7rem">Adresse</span><div>{{ etab.adresse or '—' }}</div></div>
-      <div><span class="text-muted" style="font-size:.7rem">N° Autorisation</span><div>{{ etab.numero_autorisation or '—' }}</div></div>
-      <div><span class="text-muted" style="font-size:.7rem">Type</span>
-        <div><span class="badge b-info">{{ etab.type_etablissement }}</span></div></div>
-      {% if etab.telephone %}<div><span class="text-muted" style="font-size:.7rem">Tél</span><div>{{ etab.telephone }}</div></div>{% endif %}
-    </div>
-  </div>
-</div>
+<!-- Layout 2 colonnes -->
+<div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px;align-items:start">
 
-<!-- Autres ODP du même contribuable -->
-{% if autres_odp %}
-<div class="card mb-3">
-  <div class="card-header"><h3>🏪 Autres Obligations — Domaine Public (même contribuable)</h3></div>
+<!-- ═══ Colonne gauche : Trimestres non déclarés ══════════════════ -->
+<div class="card">
+  <div class="card-header"><h3>⏱️ Trimestres Non Déclarés</h3>
+    <button type="button" onclick="selectAll()" class="btn btn-xs btn-outline">☑ Tout sélectionner</button>
+  </div>
   <div class="card-body">
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      {% for o in autres_odp %}
-      <div class="odp-badge">
-        <span>🏪 {{ o.type_occupation or 'ODP' }}</span>
-        <span style="color:var(--muted)">#{{ o.numero }}</span>
-        <a href="{{ url_for('occupation.odp_detail', id=o.id) }}" class="btn btn-xs btn-outline">Voir →</a>
+    {% if non_payes_by_year %}
+    <form method="post" action="{{ url_for('tdb.tdb_declarer', id=etab.id) }}" id="declForm">
+      <!-- Numéro BV + date -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div>
+          <label style="font-size:.72rem;font-weight:700">N° Bulletin Versement *</label>
+          <input type="text" name="numero_bulletin" required
+                 placeholder="N° BV de la RMP..."
+                 style="border:2px solid var(--accent);font-weight:700;padding:7px;width:100%;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:.72rem;font-weight:700">Date déclaration</label>
+          <input type="date" name="date_declaration" value="{{ today }}" required
+                 style="padding:7px;width:100%;box-sizing:border-box">
+        </div>
       </div>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-{% endif %}
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+      <!-- Années avec trimestres -->
+      {% for annee, trims in non_payes_by_year.items() %}
+      {% set nb_retard = trims | selectattr('en_retard') | list | length %}
+      <div class="year-block" id="yb-{{ annee }}">
+        <!-- En-tête année -->
+        <div class="year-head" onclick="toggleYear({{ annee }})">
+          <span class="year-toggle open" id="ytog-{{ annee }}">▾</span>
+          <span class="year-label">📅 {{ annee }}</span>
+          {% if nb_retard > 0 %}
+          <span class="year-badge-retard">⚠️ {{ nb_retard }} en retard</span>
+          {% endif %}
+          <span class="year-badge-ok">{{ trims|length }} trim.</span>
 
-  <!-- ═══ SAISIE TRIMESTRES NON PAYÉS ══════════════════ -->
-  <div class="card">
-    <div class="card-header"><h3>⏱️ Trimestres Non Déclarés</h3></div>
-    <div class="card-body">
-      {% if non_payes_by_year %}
-      <form method="post" action="{{ url_for('tdb.tdb_declarer', id=etab.id) }}" id="declForm">
-        <div class="form-group mb-3" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div>
-            <label style="font-size:.78rem">N° Bulletin versement *</label>
-            <input type="text" name="numero_bulletin" required
-                   placeholder="N° BV de la RMP..."
-                   style="border:2px solid var(--accent);font-weight:700;padding:9px">
-          </div>
-          <div>
-            <label style="font-size:.78rem">Date déclaration</label>
-            <input type="date" name="date_declaration" value="{{ today }}" required>
-          </div>
+          <!-- Info déclaration annuelle -->
+          <span style="margin-left:auto;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+            {% if annee in decls_annuelles_par_annee %}
+            <span class="decl-ann-tag ok">✅ Décl. Ann. {{ annee }}</span>
+            {% else %}
+            <a href="{{ url_for('tdb.tdb_declaration_annuelle', id=etab.id, annee=annee) }}"
+               class="decl-ann-tag btn-link" title="Créer la déclaration annuelle {{ annee }}">
+              📋 Déc. Ann. {{ annee }}
+            </a>
+            {% endif %}
+            <button type="button" class="btn-sel-year"
+                    onclick="selectYear({{ annee }}, {{ trims|map(attribute='trimestre')|list|tojson }})">
+              ☑ Tout {{ annee }}
+            </button>
+            <button type="button"
+                    onclick="openPdfCa({{ annee }}, {{ trims|map(attribute='trimestre')|list|tojson }})"
+                    class="btn btn-xs" style="background:#f0f4ff;color:var(--primary);padding:3px 7px">
+              🖨️ PDF CA
+            </button>
+          </span>
         </div>
 
-        {% for annee, trims in non_payes_by_year.items() %}
-        <div class="year-group">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div class="year-label">📅 Année {{ annee }}</div>
-            <div style="display:flex;gap:6px">
-              <button type="button" onclick="selectYear({{ annee }})"
-                      class="btn btn-outline btn-xs">☑ Tout {{ annee }}</button>
-              <button type="button"
-                      onclick="openPdfCa('{{ annee }}', {{ trims|map(attribute='trimestre')|list|tojson }})"
-                      class="btn btn-xs" style="background:#f0f4ff;color:var(--primary)">
-                🖨️ PDF CA {{ annee }}</button>
-            </div>
-          </div>
-          <div class="trims-grid" id="year-{{ annee }}">
+        <!-- Grille des 4 trimestres -->
+        <div class="year-content" id="yc-{{ annee }}">
+          <div class="trims-row" id="ygrid-{{ annee }}">
             {% for t in trims %}
-            <div class="trim-card {% if t.en_retard %}en-retard{% endif %}"
-                 id="tc-{{ annee }}-{{ t.trimestre }}" onclick="toggleTrim(this, '{{ annee }}_{{ t.trimestre }}')">
+            <div class="tc {% if t.en_retard %}retard{% endif %}"
+                 id="tc-{{ annee }}-{{ t.trimestre }}"
+                 onclick="toggleTrim(this, '{{ annee }}_{{ t.trimestre }}')">
               <input type="checkbox" name="trims" value="{{ annee }}_{{ t.trimestre }}"
                      id="chk-{{ annee }}-{{ t.trimestre }}" onclick="event.stopPropagation()">
-              <div style="font-weight:800;font-size:.95rem">T{{ t.trimestre }}</div>
-              <div style="font-size:.75rem;color:var(--muted)">{{ t.label }}</div>
+              <div class="tc-num">T{{ t.trimestre }}</div>
+              <div class="tc-label">{{ t.label }}</div>
               {% if t.en_retard %}
-              <div style="font-size:.7rem;color:var(--danger);margin-top:3px">
-                ⚠️ Retard — éch. {{ t.echeance }}
-              </div>
+              <span class="tc-badge retard">⚠️ Retard</span>
               {% endif %}
-              <!-- Saisie montant -->
-              <div class="base-input">
-                <label style="font-size:.72rem;color:var(--muted)">Recettes HT déclarées (DH)</label>
+              <!-- Saisie recettes -->
+              <div class="tc-input">
                 <input type="number" name="base_{{ annee }}_{{ t.trimestre }}" step="0.01" min="0"
-                       placeholder="Montant recettes..."
-                       oninput="updateCalc('{{ annee }}', {{ t.trimestre }}, this.value)"
-                       style="padding:7px;font-size:.9rem;font-weight:700;width:100%">
-                <div class="calc-bar" id="calc-{{ annee }}-{{ t.trimestre }}">
-                  <div class="calc-row"><span>Principal ({{ "%.0f"|format(tarifs[0].valeur if tarifs else 10) }}%)</span><strong id="p-{{ annee }}-{{ t.trimestre }}">0.00 DH</strong></div>
+                       placeholder="Recettes HT..."
+                       oninput="updateCalc('{{ annee }}', {{ t.trimestre }}, this.value, {{ 'true' if t.en_retard else 'false' }})">
+                <div class="tc-calc" id="calc-{{ annee }}-{{ t.trimestre }}" style="display:none">
+                  <div class="p-line">Rôle: <span id="p-{{ annee }}-{{ t.trimestre }}">0.00</span> DH</div>
                   {% if t.en_retard %}
-                  <div class="calc-row" style="color:var(--danger)"><span>Pénalités</span><strong id="pen-{{ annee }}-{{ t.trimestre }}">0.00 DH</strong></div>
-                  <div class="calc-row" style="color:var(--danger)"><span>Amende (min 500 DH)</span><strong id="amd-{{ annee }}-{{ t.trimestre }}">0.00 DH</strong></div>
+                  <div class="pen-line">Pén+Amende: <span id="pen-{{ annee }}-{{ t.trimestre }}">0.00</span> DH</div>
                   {% endif %}
-                  <div class="calc-row total"><span>TOTAL</span><strong id="tot-{{ annee }}-{{ t.trimestre }}">0.00 DH</strong></div>
+                  <div class="tot-line">Total: <span id="tot-{{ annee }}-{{ t.trimestre }}">0.00</span> DH</div>
                 </div>
               </div>
             </div>
             {% endfor %}
           </div>
         </div>
-        {% endfor %}
+      </div>
+      {% endfor %}
 
-        <!-- Totaux généraux -->
-        <div style="background:linear-gradient(135deg,#1e3a5f,#2a5298);color:#fff;border-radius:10px;padding:14px 16px;margin-top:8px" id="grand-total-box" style="display:none">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-weight:700">TOTAL GÉNÉRAL — <span id="n-trims-sel">0</span> trimestre(s)</span>
-            <span style="font-size:1.2rem;font-weight:900" id="grand-total">0.00 DH</span>
-          </div>
+      <!-- Total global -->
+      <div class="grand-bar" id="grand-bar">
+        <div>
+          <div style="font-weight:700;font-size:.88rem">TOTAL — <span id="n-sel">0</span> trimestre(s)</div>
+          <div style="font-size:.72rem;opacity:.7">amende annuelle une seule fois par an</div>
         </div>
+        <span style="font-size:1.2rem;font-weight:900" id="grand-total">0.00 DH</span>
+      </div>
 
-        <div id="btn-submit-box" style="margin-top:12px;display:none">
-          <a id="btn-pdf-ca" href="#" target="_blank"
-             class="btn btn-outline" style="width:100%;margin-bottom:8px;text-align:center">
-            🖨️ Générer PDF à remplir manuellement
-          </a>
-          <button type="submit" class="btn btn-primary" style="width:100%">
-            📤 Envoyer Bulletin de Versement
-          </button>
-        </div>
-      </form>
-      {% else %}
-      <div class="empty-state"><span class="ei">✅</span>Tous les trimestres sont à jour.</div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- ═══ HISTORIQUE DÉCLARATIONS ══════════════════════ -->
-  <div class="card">
-    <div class="card-header"><h3>📄 Historique Déclarations</h3></div>
-    {% if declarations %}
-    <div class="table-responsive">
-      <table style="font-size:.8rem">
-        <thead><tr>
-          <th>Année</th><th>Trim.</th><th>Base HT</th><th>Taux</th>
-          <th>Principal</th><th>Pén.</th><th>Total</th><th>Statut</th><th>Quittance</th>
-        </tr></thead>
-        <tbody>
-          {% set totals = namespace(p=0,t=0) %}
-          {% for d in declarations %}
-          {% if d.statut == 'paye' %}{% set totals.p = totals.p + d.montant_principal %}{% set totals.t = totals.t + d.montant_total %}{% endif %}
-          <tr>
-            <td><strong>{{ d.annee }}</strong></td>
-            <td><span class="badge b-info">T{{ d.trimestre }}</span></td>
-            <td>{{ "%.2f"|format(d.base_calcul or 0) }}</td>
-            <td><small>{{ d.taux }}%</small></td>
-            <td>{{ "%.2f"|format(d.montant_principal or 0) }}</td>
-            <td>{% if d.penalite_retard > 0 %}<span style="color:var(--danger)">{{ "%.2f"|format(d.penalite_retard) }}</span>{% else %}—{% endif %}</td>
-            <td><strong>{{ "%.2f"|format(d.montant_total or 0) }} DH</strong></td>
-            <td>
-              <span class="badge {% if d.statut=='paye' %}b-ok{% elif d.statut=='emis' %}b-warn{% elif d.statut=='sous_seuil' %}b-sec{% else %}b-danger{% endif %}">
-                {{ d.statut }}
-              </span>
-            </td>
-            <td>
-              {% if d.statut == 'paye' and d.bull_quittance %}
-              <small style="color:var(--primary)">{{ d.bull_quittance }}<br>{{ d.bull_date_quittance }}</small>
-              {% else %}—{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-        <tfoot>
-          <tr style="background:var(--card);font-weight:800">
-            <td colspan="4" style="text-align:right">Total payé</td>
-            <td>{{ "%.2f"|format(totals.p) }}</td>
-            <td>—</td>
-            <td>{{ "%.2f"|format(totals.t) }} DH</td>
-            <td colspan="2"></td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
+      <!-- Boutons actions -->
+      <div class="action-bar" id="action-bar">
+        <a id="btn-pdf-ca" href="#" target="_blank"
+           class="btn btn-outline" style="flex:1;text-align:center;font-size:.85rem">
+          🖨️ PDF CA
+        </a>
+        <button type="submit" class="btn btn-primary" style="flex:2">
+          📤 Envoyer Bulletin de Versement
+        </button>
+      </div>
+    </form>
     {% else %}
-    <div class="card-body empty-state"><span class="ei">📄</span>Aucune déclaration.</div>
+    <div class="empty-state"><span class="ei">✅</span>Tous les trimestres sont déclarés.</div>
     {% endif %}
   </div>
+</div>
+
+<!-- ═══ Colonne droite : Historique ══════════════════════════════ -->
+<div class="card">
+  <div class="card-header"><h3>📄 Historique</h3>
+    <a href="{{ url_for('tdb.tdb_declaration_annuelle', id=etab.id) }}"
+       class="btn btn-xs btn-outline">📋 Décl. Ann.</a>
+  </div>
+  {% if declarations %}
+  <div class="table-responsive">
+    <table class="hist-table">
+      <thead><tr>
+        <th>An</th><th>T</th><th>Base HT</th><th>Total</th><th>Pén.</th><th>Statut</th><th>Quitt.</th>
+      </tr></thead>
+      <tbody>
+        {% for d in declarations %}
+        <tr style="{% if d.statut=='paye' %}background:#f0fdf4{% elif d.statut=='emis' %}background:#fffbf0{% endif %}">
+          <td><strong>{{ d.annee }}</strong></td>
+          <td><span class="badge b-info" style="font-size:.6rem">T{{ d.trimestre }}</span></td>
+          <td>{{ "%.0f"|format(d.base_calcul or 0) }}</td>
+          <td><strong>{{ "%.2f"|format(d.montant_total or 0) }} <small>DH</small></strong></td>
+          <td>{% if (d.penalite_retard or 0) + (d.amende_non_declaration or 0) > 0 %}
+            <span style="color:var(--danger);font-size:.7rem;font-weight:700">
+              +{{ "%.0f"|format((d.penalite_retard or 0) + (d.majoration or 0) + (d.amende_non_declaration or 0)) }}
+            </span>{% else %}—{% endif %}
+          </td>
+          <td>
+            {% if d.statut=='paye' %}<span class="badge b-ok" style="font-size:.6rem">✅ Payé</span>
+            {% elif d.statut=='emis' %}<span class="badge b-warn" style="font-size:.6rem">⏳ Émis</span>
+            {% elif d.statut=='sous_seuil' %}<span class="badge b-sec" style="font-size:.6rem">↓ Seuil</span>
+            {% else %}<span class="badge b-danger" style="font-size:.6rem">{{ d.statut }}</span>{% endif %}
+          </td>
+          <td>{% if d.bull_quittance %}
+            <small style="color:var(--ok);font-weight:700">{{ d.bull_quittance }}</small>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% set t_pay = declarations | selectattr('statut','eq','paye') | sum(attribute='montant_total') %}
+      {% set t_en = declarations | selectattr('statut','eq','emis') | sum(attribute='montant_total') %}
+      <tfoot>
+        <tr style="background:var(--card);font-weight:800;font-size:.78rem">
+          <td colspan="3" style="text-align:right">Total payé / dû</td>
+          <td><span style="color:var(--ok)">{{ "%.0f"|format(t_pay) }}</span>
+            {% if t_en %} / <span style="color:var(--warn)">{{ "%.0f"|format(t_en) }}</span>{% endif %} DH
+          </td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body empty-state"><span class="ei">📄</span>Aucune déclaration.</div>
+  {% endif %}
+</div>
 </div>
 
 <script>
 const TAUX = {{ tarifs[0].valeur if tarifs else 10 }};
 const AMENDE_PCT = {{ amende_pct }};
-let totaux = {};
 const BASE_PDF_URL = "{{ url_for('tdb.tdb_pdf_ca', id=etab.id) }}";
+let totaux = {};
+// Suivi des amendes déjà appliquées par année (UNE SEULE fois par an côté JS)
+let amendesParAnnee = {};
 
-function openPdfCa(annee, trims) {
-  const keys = trims.map(t => `${annee}_${t}`).join(',');
-  window.open(BASE_PDF_URL + '?trims=' + encodeURIComponent(keys), '_blank');
+// === Sélection automatique chronologique (les plus anciens d'abord) ===
+function getCheckboxesChrono() {
+  return [...document.querySelectorAll('input[name="trims"]')]
+    .sort((a, b) => a.value.localeCompare(b.value)); // tri chronologique
 }
-
 
 function toggleTrim(card, key) {
   const chk = card.querySelector('input[type=checkbox]');
   chk.checked = !chk.checked;
   if (chk.checked) {
-    card.classList.add('selected');
+    card.classList.add('sel');
   } else {
-    card.classList.remove('selected');
+    card.classList.remove('sel');
     delete totaux[key];
+    // Recalculer les amendes
+    recalcAllAmendes();
   }
-  updateGrandTotal();
-  updatePdfLink();
-  updateSubmitBox();
+  refreshUI();
 }
 
-function selectYear(annee) {
-  document.querySelectorAll(`#year-${annee} .trim-card`).forEach(card => {
-    const chk = card.querySelector('input[type=checkbox]');
-    chk.checked = true;
-    card.classList.add('selected');
+function selectYear(annee, trims) {
+  trims.forEach(t => {
+    const card = document.getElementById(`tc-${annee}-${t}`);
+    const chk = document.getElementById(`chk-${annee}-${t}`);
+    if (card && chk && !chk.checked) {
+      chk.checked = true;
+      card.classList.add('sel');
+    }
   });
-  updateGrandTotal();
-  updatePdfLink();
-  updateSubmitBox();
+  refreshUI();
 }
 
-function updateCalc(annee, trim, baseStr) {
+function selectAll() {
+  // Sélectionner dans l'ordre chronologique (anciens en premier)
+  getCheckboxesChrono().forEach(chk => {
+    if (!chk.checked) {
+      chk.checked = true;
+      chk.closest('.tc').classList.add('sel');
+    }
+  });
+  refreshUI();
+}
+
+function toggleYear(annee) {
+  const content = document.getElementById(`yc-${annee}`);
+  const tog = document.getElementById(`ytog-${annee}`);
+  const collapsed = content.classList.toggle('collapsed');
+  tog.classList.toggle('open', !collapsed);
+}
+
+// === Calcul ===
+function updateCalc(annee, trim, baseStr, enRetard) {
   const key = `${annee}_${trim}`;
   const base = parseFloat(baseStr) || 0;
   const principal = Math.round(base * TAUX / 100 * 100) / 100;
-  const card = document.getElementById(`tc-${annee}-${trim}`);
-  const enRetard = card.classList.contains('en-retard');
+
   let amende = 0, pen = 0;
   if (enRetard && principal > 0) {
-    amende = Math.max(Math.round(principal * AMENDE_PCT / 100 * 100) / 100, 500);
-    pen = Math.round(principal * 0.10 * 100) / 100; // approximation
+    // Vérifier si l'amende a déjà été appliquée pour cette année
+    if (!amendesParAnnee[annee]) {
+      amende = Math.max(Math.round(principal * AMENDE_PCT / 100 * 100) / 100, 500);
+      amendesParAnnee[annee] = key; // marquer
+    }
+    pen = Math.round(principal * 0.10 * 100) / 100;
   }
+
   const total = Math.round((principal + pen + amende) * 100) / 100;
   totaux[key] = total;
 
@@ -279,37 +365,66 @@ function updateCalc(annee, trim, baseStr) {
     calcDiv.style.display = base > 0 ? 'block' : 'none';
     const pEl = document.getElementById(`p-${annee}-${trim}`);
     const penEl = document.getElementById(`pen-${annee}-${trim}`);
-    const amdEl = document.getElementById(`amd-${annee}-${trim}`);
     const totEl = document.getElementById(`tot-${annee}-${trim}`);
-    if (pEl) pEl.textContent = principal.toFixed(2) + ' DH';
-    if (penEl) penEl.textContent = pen.toFixed(2) + ' DH';
-    if (amdEl) amdEl.textContent = amende.toFixed(2) + ' DH';
-    if (totEl) totEl.textContent = total.toFixed(2) + ' DH';
+    if (pEl) pEl.textContent = principal.toFixed(2);
+    if (penEl) penEl.textContent = (pen + amende).toFixed(2);
+    if (totEl) totEl.textContent = total.toFixed(2);
   }
-  updateGrandTotal();
+  refreshUI();
 }
 
-function updateGrandTotal() {
-  const checked = document.querySelectorAll('input[name="trims"]:checked');
+function recalcAllAmendes() {
+  // Réinitialiser les amendes et recalculer dans l'ordre chronologique
+  amendesParAnnee = {};
+  getCheckboxesChrono().forEach(chk => {
+    if (chk.checked) {
+      const [annee, trim] = chk.value.split('_').map(Number);
+      const inp = document.querySelector(`[name="base_${annee}_${trim}"]`);
+      if (inp && inp.value) {
+        const card = document.getElementById(`tc-${annee}-${trim}`);
+        const enRetard = card && card.classList.contains('retard');
+        updateCalc(annee, trim, inp.value, enRetard);
+      }
+    }
+  });
+}
+
+function refreshUI() {
+  const checked = [...document.querySelectorAll('input[name="trims"]:checked')];
   let grand = 0;
   checked.forEach(c => { grand += totaux[c.value] || 0; });
-  document.getElementById('n-trims-sel').textContent = checked.length;
+  document.getElementById('n-sel').textContent = checked.length;
   document.getElementById('grand-total').textContent = grand.toFixed(2) + ' DH';
-  const box = document.getElementById('grand-total-box');
-  if (box) box.style.display = checked.length > 0 ? 'block' : 'none';
-}
 
-function updateSubmitBox() {
-  const n = document.querySelectorAll('input[name="trims"]:checked').length;
-  const box = document.getElementById('btn-submit-box');
-  if (box) box.style.display = n > 0 ? 'block' : 'none';
+  const grandBar = document.getElementById('grand-bar');
+  const actionBar = document.getElementById('action-bar');
+  [grandBar, actionBar].forEach(el => {
+    if (el) el.classList.toggle('vis', checked.length > 0);
+  });
+  updatePdfLink();
 }
 
 function updatePdfLink() {
   const checked = [...document.querySelectorAll('input[name="trims"]:checked')];
   const trims = checked.map(c => c.value).join(',');
   const link = document.getElementById('btn-pdf-ca');
-  if (link) link.href = `{{ url_for('tdb.tdb_pdf_ca', id=etab.id) }}?trims=${trims}`;
+  if (link) link.href = BASE_PDF_URL + '?trims=' + encodeURIComponent(trims);
 }
+
+function openPdfCa(annee, trims) {
+  const keys = trims.map(t => `${annee}_${t}`).join(',');
+  window.open(BASE_PDF_URL + '?trims=' + encodeURIComponent(keys), '_blank');
+}
+
+// === Auto-sélection des plus anciens ===
+window.addEventListener('DOMContentLoaded', () => {
+  // Auto-sélectionner le trimestre le plus ancien non payé (suggestion visuelle)
+  const first = getCheckboxesChrono()[0];
+  if (first) {
+    first.checked = true;
+    first.closest('.tc').classList.add('sel');
+    refreshUI();
+  }
+});
 </script>
 {% endblock %}
