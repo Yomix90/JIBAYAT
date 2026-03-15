@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>إعذار — الرسم على محال بيع المشروبات — {{ etab.nom_etablissement }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 15mm 18mm 20mm 18mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cairo', sans-serif; font-size: 11pt; color: #111; direction: rtl; line-height: 1.8; }
+  .no-print { text-align: center; margin-bottom: 16px; }
+  .btn-print { background: #1e3a5f; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 28px; font-family: 'Cairo',sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; }
+  @media print { .no-print { display: none; } }
+
+  .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+    margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid #1e3a5f; }
+  .box-kingdom { width: 35%; font-size: 10.5pt; font-weight: 700; color: #1e3a5f; line-height: 1.9; }
+  .box-logo { width: 12%; text-align: center; }
+  .seal { width: 64px; height: 64px; border: 3px double #1e3a5f; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 20pt; margin: 0 auto; }
+  .box-ref { width: 35%; font-size: 10pt; border: 1.5px solid #1e3a5f; border-radius: 6px;
+    padding: 8px 12px; background: #f8f9fc; line-height: 2; }
+  .ref-val { font-weight: 800; color: #1e3a5f; border-bottom: 1px dotted #aaa; display: inline-block; min-width: 80px; }
+  .dest { text-align: center; margin: 18px 0; }
+  .name { font-size: 13pt; font-weight: 900; color: #1e3a5f; border-bottom: 2px solid #c8a84b; display: inline-block; padding: 2px 24px; }
+  .objet { background: #f0f4ff; border-right: 4px solid #1e3a5f; padding: 9px 14px; margin: 14px 0; font-size: 12pt; font-weight: 800; }
+  .corps { text-align: justify; font-size: 10.5pt; line-height: 2; }
+  .corps p { margin-bottom: 10px; }
+  .highlight { font-weight: 800; color: #1e3a5f; }
+  .detail-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10pt; }
+  .detail-table th { background: #1e3a5f; color: #fff; padding: 7px 10px; text-align: center; font-weight: 700; }
+  .detail-table td { border: 1px solid #c0c8dc; padding: 7px 10px; text-align: center; }
+  .detail-table tr:nth-child(even) td { background: #f8f9fc; }
+  .total-row td { background: #fee2e2; font-weight: 900; color: #dc2626; }
+  .montant { font-weight: 900; color: #dc2626; background: #fee2e2; padding: 1px 8px; border-radius: 4px; }
+  .footer-sign { margin-top: 24px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .sig-area { border-top: 1px dashed #aaa; margin-top: 55px; padding-top: 4px; font-size: 9pt; color: #888; }
+</style>
+</head>
+<body>
+<div class="no-print">
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimer / PDF</button>
+</div>
+
+<!-- En-tête -->
+<div class="header">
+  <div class="box-kingdom">
+    <div>المملكة المغربية</div>
+    <div>وزارة الداخلية</div>
+    <div>إقليم {{ province or '..................' }}</div>
+    <div>جماعة <strong style="color:#c8a84b">{{ commune }}</strong></div>
+    <div style="font-size:9pt">مكتب الوعاء الضريبي</div>
+  </div>
+  <div class="box-logo"><div class="seal">🏛️</div></div>
+  <div class="box-ref">
+    <div style="color:#666;font-size:9pt">عدد</div>
+    <div class="ref-val">{{ n_avis }}</div>
+    <div style="color:#666;font-size:9pt;margin-top:4px">تاريخ</div>
+    <div class="ref-val">{{ today }}</div>
+    <div style="color:#666;font-size:9pt;margin-top:4px">رقم الترخيص</div>
+    <div class="ref-val">{{ etab.numero_autorisation or '—' }}</div>
+  </div>
+</div>
+
+<!-- Destinataire -->
+<div class="dest">
+  <div style="font-size:11pt;color:#555">رئيس المجلس الجماعي لـ <strong>{{ commune }}</strong> — إلـى</div>
+  <div style="margin: 6px 0">السيد(ة) : <span class="name">{{ etab.prenom or '' }} {{ etab.nom or etab.raison_sociale or '' }}</span></div>
+  <div style="font-size:10pt;color:#333;font-weight:600">
+    {% if etab.cin %}الحامل لبطاقة التعريف : <strong>{{ etab.cin }}</strong>{% endif %}
+    {% if etab.ctb_adresse %}<br>الساكن بـ : {{ etab.ctb_adresse }}{% endif %}
+  </div>
+</div>
+
+<!-- Objet -->
+<div class="objet">الموضوع : <span>حول أداء الرسم على محال بيع المشروبات</span></div>
+
+<!-- Corps -->
+<div class="corps">
+  <p style="text-align:center">ـ سلام تام بوجود مولانا الإمام ـ</p>
+  <p>
+    صلةً بالموضوع المشار إليه أعلاه، تفيدكم مصالح الجماعة بأنه يقيد بسجلاتها
+    <span class="highlight">محل بيع المشروبات</span> المعروف بـ
+    <strong>« {{ etab.nom_etablissement }} »</strong> الكائن بـ
+    <strong>{{ etab.adresse or '...........' }}</strong> برقم الترخيص
+    <strong>{{ etab.numero_autorisation or '...........' }}</strong>
+    المسجل باسمكم.
+  </p>
+  <p>
+    وعليه، فإنكم ملزمون بأداء الرسم المستحق عن الأرباع السنوية التالية طبقاً للمادة
+    <strong>67</strong> من القانون رقم <strong>47.06</strong> بنسبة <strong>{{ "%.0f"|format(taux) }}%</strong> من رقم الأعمال :
+  </p>
+
+  <table class="detail-table">
+    <thead>
+      <tr>
+        <th>الفصل/الربع السنوي</th>
+        <th>السنة</th>
+        <th>تاريخ الاستحقاق</th>
+        <th>ملاحظة</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in non_payes %}
+      <tr>
+        <td><strong>{{ t.label }}</strong></td>
+        <td>{{ t.annee }}</td>
+        <td>{{ t.echeance }}</td>
+        <td>{% if t.en_retard %}<span style="color:#dc2626;font-weight:700">⚠️ متأخر</span>{% else %}في الوقت{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p>
+    ندعوكم إلى <span class="highlight">التصريح بمداخيلكم وأداء الرسم المستحق</span>
+    في أجل أقصاه <strong>{{ today[:4] }}-03-31</strong>،
+    تجنباً لتطبيق غرامة التأخير بنسبة <strong>15%</strong> لا تقل عن <strong>500 درهم</strong>.
+  </p>
+  <p style="text-align:center">تقبلوا خالص التقدير والاحترام. والسلام.</p>
+</div>
+
+<!-- Signature -->
+<div class="footer-sign">
+  <div style="font-size:9.5pt;color:#555">{{ commune }} في {{ today }}</div>
+  <div style="text-align:center">
+    <div style="font-size:11pt;font-weight:900;color:#1e3a5f">رئيس المجلس الجماعي</div>
+    <div class="sig-area">التوقيع والختم</div>
+  </div>
+</div>
+
+</body>
+</html>

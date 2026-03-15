@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}Déclaration Annuelle TDB — {{ annee }}{% endblock %}
+{% block page_title %}📋 Déclaration Annuelle — Débits de Boissons {{ annee }}{% endblock %}
+{% block content %}
+<div class="df gap-2 mb-3">
+  <a href="{{ url_for('tdb.tdb_paiement', id=etab.id) }}" class="btn btn-outline btn-sm">← Paiement</a>
+  <a href="{{ url_for('tdb.tdb_declaration_annuelle', id=etab.id, annee=annee, pdf=1) }}" target="_blank"
+     class="btn btn-outline btn-sm">🖨️ Imprimer PDF vierge</a>
+</div>
+
+<div class="card" style="max-width:680px;margin:0 auto">
+  <div class="card-header">
+    <h3>📋 Déclaration Annuelle — Recettes {{ annee }}</h3>
+  </div>
+  <div class="card-body">
+    <div class="alert alert-info mb-3">
+      <strong>ℹ️ Règle :</strong> La déclaration annuelle doit être déposée avant le <strong>1er Avril {{ annee + 1 }}</strong>.
+      Elle porte sur les recettes réalisées durant l'année <strong>{{ annee }}</strong>.
+    </div>
+
+    <form method="post" action="{{ url_for('tdb.tdb_declaration_annuelle', id=etab.id) }}">
+      <input type="hidden" name="annee_declaration" value="{{ annee }}">
+
+      <div class="form-group mb-3">
+        <label>Date de dépôt</label>
+        <input type="date" name="date_declaration" value="{{ today }}" required>
+      </div>
+
+      <div style="font-weight:700;margin-bottom:10px;color:var(--primary)">Recettes par trimestre ({{ annee }}) :</div>
+
+      {% set trims_labels = {1:'T1 — Janvier à Mars', 2:'T2 — Avril à Juin', 3:'T3 — Juillet à Septembre', 4:'T4 — Octobre à Décembre'} %}
+      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+        {% for t in range(1, 5) %}
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:{{ '1px solid var(--border)' if t < 4 else 'none' }}">
+          <div style="width:220px;font-weight:600;font-size:.88rem">{{ trims_labels[t] }}</div>
+          <div style="flex:1">
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="number" name="base_t{{ t }}" step="0.01" min="0"
+                     placeholder="Recettes HT (DH)..."
+                     value="{{ '%.2f'|format(decls_trim[t].base_calcul) if t in decls_trim else '' }}"
+                     style="flex:1;padding:8px;font-size:.9rem"
+                     oninput="calcAnnuel()">
+              <div style="font-size:.78rem;text-align:right;min-width:90px">
+                <div style="color:var(--muted)">→ Rôle ({{ "%.0f"|format(taux) }}%)</div>
+                <strong id="role-t{{ t }}" style="color:var(--primary)">0.00 DH</strong>
+              </div>
+            </div>
+          </div>
+          {% if t in decls_trim %}
+          <div>
+            <span class="badge {% if decls_trim[t].statut == 'paye' %}b-ok{% else %}b-warn{% endif %}">
+              {{ decls_trim[t].statut }}
+            </span>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <!-- Total -->
+        <div style="display:flex;justify-content:space-between;padding:12px 14px;background:var(--card);border-top:2px solid var(--border)">
+          <strong>TOTAL Recettes HT {{ annee }}</strong>
+          <strong id="total-base" style="color:var(--primary)">0.00 DH</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 14px;background:#e8eeff">
+          <strong>TOTAL Rôle dû ({{ "%.0f"|format(taux) }}%)</strong>
+          <strong id="total-role" style="color:#1e3a5f;font-size:1.05rem">0.00 DH</strong>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <a href="{{ url_for('tdb.tdb_paiement', id=etab.id) }}" class="btn btn-outline">Annuler</a>
+        <button type="submit" class="btn btn-primary">💾 Enregistrer Déclaration Annuelle</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const TAUX = {{ taux }};
+function calcAnnuel() {
+  let totalBase = 0;
+  for (let t = 1; t <= 4; t++) {
+    const v = parseFloat(document.querySelector(`[name="base_t${t}"]`).value) || 0;
+    totalBase += v;
+    const role = Math.round(v * TAUX / 100 * 100) / 100;
+    document.getElementById(`role-t${t}`).textContent = role.toFixed(2) + ' DH';
+  }
+  document.getElementById('total-base').textContent = totalBase.toFixed(2) + ' DH';
+  document.getElementById('total-role').textContent = (Math.round(totalBase * TAUX / 100 * 100) / 100).toFixed(2) + ' DH';
+}
+window.addEventListener('load', calcAnnuel);
+</script>
+{% endblock %}
