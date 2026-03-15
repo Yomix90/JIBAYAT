@@ -106,9 +106,10 @@
             <div style="display:flex;gap:6px">
               <button type="button" onclick="selectYear({{ annee }})"
                       class="btn btn-outline btn-xs">☑ Tout {{ annee }}</button>
-              <a href="{{ url_for('tdb.tdb_pdf_ca', id=etab.id, trims=trims|map(attribute='annee')|join(',')) }}"
-                 target="_blank" class="btn btn-xs" style="background:#f0f4ff;color:var(--primary)">
-                🖨️ PDF CA {{ annee }}</a>
+              <button type="button"
+                      onclick="openPdfCa('{{ annee }}', {{ trims|map(attribute='trimestre')|list|tojson }})"
+                      class="btn btn-xs" style="background:#f0f4ff;color:var(--primary)">
+                🖨️ PDF CA {{ annee }}</button>
             </div>
           </div>
           <div class="trims-grid" id="year-{{ annee }}">
@@ -226,6 +227,13 @@
 const TAUX = {{ tarifs[0].valeur if tarifs else 10 }};
 const AMENDE_PCT = {{ amende_pct }};
 let totaux = {};
+const BASE_PDF_URL = "{{ url_for('tdb.tdb_pdf_ca', id=etab.id) }}";
+
+function openPdfCa(annee, trims) {
+  const keys = trims.map(t => `${annee}_${t}`).join(',');
+  window.open(BASE_PDF_URL + '?trims=' + encodeURIComponent(keys), '_blank');
+}
+
 
 function toggleTrim(card, key) {
   const chk = card.querySelector('input[type=checkbox]');

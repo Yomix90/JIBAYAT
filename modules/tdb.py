@@ -174,11 +174,15 @@ def tdb_paiement(id):
            WHERE d.module="DEBITS_BOISSONS" AND d.reference_id=? ORDER BY d.annee DESC, d.trimestre DESC''',
         (id,)).fetchall()
 
-    # Autres établissements ODP du même contribuable
-    autres_odp = conn.execute(
-        '''SELECT op.*, 'ODP' as module_type FROM occupations_domaine op
-           WHERE op.contribuable_id=? AND op.actif=1''',
-        (etab['ctb_id'],)).fetchall()
+    # Autres établissements ODP du même contribuable (table peut ne pas exister)
+    try:
+        autres_odp = conn.execute(
+            '''SELECT op.*, 'ODP' as module_type FROM occupations_domaine op
+               WHERE op.contribuable_id=? AND op.actif=1''',
+            (etab['ctb_id'],)).fetchall()
+    except Exception:
+        autres_odp = []
+
 
     tarifs = get_tarifs_module('DEBITS_BOISSONS')
     non_payes = trimestres_non_payes(id, 2022)
@@ -348,7 +352,7 @@ def tdb_declaration_annuelle(id):
     conn.close()
 
     commune = commune_row['nom'] if commune_row else ''
-    province = commune_row.get('province', '') if commune_row else ''
+    province = (commune_row['province'] if commune_row and 'province' in commune_row.keys() else '')
     n_decl = f"DA-{annee_decl}-{id:04d}"
 
     if request.args.get('pdf'):
@@ -393,7 +397,7 @@ def tdb_pdf_ca(id):
 
     taux = float(tarifs[0]['valeur']) if tarifs else 10.0
     commune = commune_row['nom'] if commune_row else ''
-    province = commune_row.get('province', '') if commune_row else ''
+    province = (commune_row['province'] if commune_row and 'province' in commune_row.keys() else '')
     n_decl = f"TDB-CA-{date.today().year}-{id:04d}"
 
     return render_template('tdb/tdb_declaration_ca_pdf.html',
@@ -422,7 +426,7 @@ def tdb_avis(id):
     non_payes = trimestres_non_payes(id, 2022)
     taux = float(tarifs[0]['valeur']) if tarifs else 10.0
     commune = commune_row['nom'] if commune_row else ''
-    province = commune_row.get('province', '') if commune_row else ''
+    province = (commune_row['province'] if commune_row and 'province' in commune_row.keys() else '')
     n_avis = f"{id:03d}/{date.today().year}"
 
     return render_template('tdb/tdb_avis.html',
