@@ -228,10 +228,43 @@ def tnb_paiement(id):
         })
     
     params_tnb = conn.execute("SELECT * FROM parametres_calcul WHERE module='TNB' ORDER BY code").fetchall()
+    
+    # Autres terrains du même contribuable
+    autres_terrains = []
+    if terrain:
+        rows = conn.execute('''
+            SELECT t.id, t.numero_terrain, t.titre_foncier, t.superficie, t.zone, t.adresse,
+                   (SELECT COUNT(*) FROM declarations d WHERE d.module="TNB" AND d.reference_id=t.id AND d.statut="paye") as nb_paye,
+                   (SELECT COUNT(*) FROM declarations d WHERE d.module="TNB" AND d.reference_id=t.id AND d.statut!="annule") as nb_total
+            FROM terrains t
+            WHERE t.contribuable_id=? AND t.id!=? AND t.actif=1
+            ORDER BY t.numero_terrain
+        ''', (terrain['ctb_id'], id)).fetchall()
+        
+        # Calculer le total impayé pour chaque terrain
+        today_str = today
+        for r in rows:
+            r = dict(r)
+            debut_r = 2020
+            debut_manq = annees_non_payees('TNB', r['id'], debut_r)
+            zone_r = str(r['zone'] or 'A')
+            sup_r = float(r['superficie'] or 0.0)
+            total_r = 0.0
+            for yr in debut_manq:
+                for t in all_tarifs:
+                    if str(t['date_debut']) <= f"{yr}-12-31":
+                        if not t['date_fin'] or str(t['date_fin']) >= f"{yr}-01-01":
+                            taux_r = float(t['valeur'])
+                            total_r += round(sup_r * taux_r, 2)
+                            break
+            r['nb_impaye'] = len(debut_manq)
+            r['total_impaye'] = round(total_r, 2)
+            autres_terrains.append(r)
+    
     conn.close()
     return render_template('tnb_paiement.html', user=user, terrain=terrain, 
         declarations=declarations, annees_manquantes=annees_manquantes_details,
-        tarifs=tarifs, params=params_tnb, today=today)
+        tarifs=tarifs, params=params_tnb, today=today, autres_terrains=autres_terrains)
 
 @bp.route('/tnb/<int:id>/multi_declarations', methods=['POST'])
 @login_required

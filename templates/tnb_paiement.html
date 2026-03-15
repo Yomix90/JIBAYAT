@@ -19,10 +19,47 @@
   <a href="{{ url_for('export_excel', module='TNB') }}" class="btn btn-success btn-sm">📊 Excel</a>
 </div>
 
-<div class="card">
-  <div class="card-header">
-    <h3>📋 Objet: {{ terrain.numero_terrain }} — TF: {{ terrain.titre_foncier or 'N/A' }}</h3>
-    <span><strong>{{ terrain.nom }} {{ terrain.prenom or terrain.raison_sociale or '' }}</strong></span>
+<!-- En-tête terrain + autres terrains du contribuable -->
+<div class="card mb-3">
+  <div class="card-header" style="align-items:flex-start;flex-direction:column;gap:6px">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+      <h3 style="margin:0">📋 {{ terrain.numero_terrain }} — TF: {{ terrain.titre_foncier or 'N/A' }}
+        <small style="font-weight:400;color:var(--muted)">| Zone: {{ terrain.zone or '—' }} | {{ "%.0f"|format(terrain.superficie or 0) }} m²</small>
+      </h3>
+      <span style="font-size:.9rem"><strong>👤 {{ terrain.nom }} {{ terrain.prenom or terrain.raison_sociale or '' }}</strong></span>
+    </div>
+    {% if autres_terrains %}
+    <details style="width:100%;margin-top:4px">
+      <summary style="cursor:pointer;font-size:.82rem;color:var(--primary);font-weight:600;list-style:none;display:flex;align-items:center;gap:6px">
+        <span>🏘️ {{ autres_terrains|length }} autre(s) terrain(s) de ce contribuable</span>
+        <span class="badge b-warn" style="font-size:.65rem">
+          {{ autres_terrains|sum(attribute='nb_impaye') }} année(s) impayée(s)
+        </span>
+        <span style="margin-left:auto;opacity:.5;font-size:.8rem">▼ Voir</span>
+      </summary>
+      <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">
+        {% for t in autres_terrains %}
+        <a href="{{ url_for('tnb.tnb_paiement', id=t.id) }}"
+           style="display:block;text-decoration:none;border:1px solid var(--border);border-radius:8px;padding:10px 14px;background:var(--bg);transition:box-shadow .15s"
+           onmouseover="this.style.boxShadow='0 4px 16px rgba(37,99,235,.12)'" onmouseout="this.style.boxShadow=''">
+          <div style="font-weight:700;color:var(--primary)">{{ t.numero_terrain }}</div>
+          <div style="font-size:.76rem;color:var(--muted)">TF: {{ t.titre_foncier or 'N/A' }} | Zone: {{ t.zone or '—' }} | {{ "%.0f"|format(t.superficie or 0) }} m²</div>
+          {% if t.adresse %}<div style="font-size:.74rem;color:var(--muted);margin-top:2px">📍 {{ t.adresse }}</div>{% endif %}
+          <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+            {% if t.nb_impaye > 0 %}
+            <span class="badge b-warn" style="font-size:.65rem">⏳ {{ t.nb_impaye }} an(s) impayé(s)</span>
+            <span style="font-size:.78rem;font-weight:700;color:var(--danger)">{{ "%.2f"|format(t.total_impaye) }} DH</span>
+            {% else %}
+            <span class="badge b-ok" style="font-size:.65rem">✅ À jour</span>
+            {% endif %}
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </details>
+    {% else %}
+    <div style="font-size:.8rem;color:var(--muted);margin-top:2px">Ce contribuable n'a pas d'autre terrain enregistré.</div>
+    {% endif %}
   </div>
 </div>
 
