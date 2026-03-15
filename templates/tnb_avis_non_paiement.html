@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>إعذار بشأن أداء الرسم على الأراضي الحضرية غير المبنية — {{ terrain.nom }} {{ terrain.prenom or '' }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4 portrait; margin: 15mm 18mm 20mm 18mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cairo', sans-serif; font-size: 11.5pt; color: #111; direction: rtl; line-height: 1.8; background: #fff; }
+
+  /* Bouton impression */
+  .no-print { text-align: center; margin-bottom: 16px; }
+  .btn-print { background: linear-gradient(135deg, #1e3a5f, #2a5298); color: #fff; border: none;
+    border-radius: 8px; padding: 10px 28px; font-family: 'Cairo', sans-serif; font-size: 13px;
+    font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(30,58,95,.3); }
+  @media print { .no-print { display: none; } }
+
+  /* ── EN-TÊTE ── */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+            margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid #1e3a5f; }
+  .box-kingdom { width: 35%; font-size: 10.5pt; font-weight: 700; color: #1e3a5f; line-height: 1.9; text-align: right; }
+  .box-kingdom .commune { font-size: 12pt; font-weight: 900; color: #c8a84b; margin-top: 4px; }
+  .box-logo { width: 12%; text-align: center; }
+  .box-logo .seal { width: 72px; height: 72px; border: 3px double #1e3a5f; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 24pt; margin: 0 auto; }
+  .box-ref { width: 35%; font-size: 10pt; border: 1.5px solid #1e3a5f; border-radius: 6px;
+             padding: 8px 12px; background: #f8f9fc; text-align: right; line-height: 2; }
+  .box-ref .ref-lbl { color: #666; font-size: 9.5pt; }
+  .box-ref .ref-val { font-weight: 800; color: #1e3a5f; border-bottom: 1px dotted #aaa;
+                      display: inline-block; min-width: 80px; }
+
+  /* ── DESTINATAIRE ── */
+  .dest { text-align: center; margin: 20px 0; font-size: 12pt; font-weight: 700; }
+  .dest .title-to { color: #555; font-size: 11pt; font-weight: 400; }
+  .dest .name { font-size: 14pt; font-weight: 900; color: #1e3a5f;
+                border-bottom: 2px solid #c8a84b; display: inline-block; padding: 2px 30px; }
+  .dest .cin-addr { font-size: 10pt; color: #333; margin-top: 6px; font-weight: 600; }
+
+  /* ── OBJET ── */
+  .objet { background: #f0f4ff; border-right: 4px solid #1e3a5f; padding: 10px 16px;
+           margin: 16px 0; font-size: 12pt; font-weight: 800; }
+  .objet span { color: #1e3a5f; }
+
+  /* ── CORPS ── */
+  .corps { text-align: justify; font-size: 11pt; line-height: 2; color: #111; }
+  .corps p { margin-bottom: 14px; }
+  .corps .highlight { font-weight: 800; color: #1e3a5f; }
+  .corps .montant { font-weight: 900; color: #dc2626; font-size: 12pt;
+                    background: #fee2e2; padding: 2px 10px; border-radius: 4px; }
+
+  /* ── TABLEAU DÉTAILS ── */
+  .detail-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 10.5pt; }
+  .detail-table th { background: #1e3a5f; color: #fff; padding: 8px 12px; text-align: center; font-weight: 700; }
+  .detail-table td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: center; }
+  .detail-table tr:nth-child(even) td { background: #f8f9fc; }
+  .detail-table .total-row td { background: #fee2e2; font-weight: 900; font-size: 11.5pt; color: #dc2626; }
+
+  /* ── FOOTER ── */
+  .footer-sign { margin-top: 28px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .footer-date { font-size: 10pt; color: #555; }
+  .footer-president { text-align: center; }
+  .footer-president .title { font-size: 11pt; font-weight: 900; color: #1e3a5f; }
+  .footer-president .sig-area { border-top: 1px dashed #aaa; margin-top: 60px; padding-top: 6px; font-size: 9.5pt; color: #888; }
+
+  /* ── PIED DE PAGE ── */
+  .footnote { position: fixed; bottom: 4mm; left: 18mm; right: 18mm;
+    border-top: 1px solid #ccc; padding-top: 4px; font-size: 8.5pt; color: #666;
+    display: flex; justify-content: space-between; direction: rtl; }
+</style>
+</head>
+<body>
+
+<script>
+  window.onload = function() {
+    {% if request.args.get('print') %} window.print(); {% endif %}
+  };
+</script>
+
+<div class="no-print">
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+</div>
+
+<!-- ── EN-TÊTE ── -->
+<div class="header">
+  <div class="box-kingdom">
+    <div>المملكة المغربية</div>
+    <div>وزارة الداخلية</div>
+    <div>إقليم {{ province or '....................' }}</div>
+    <div>جماعة <span class="commune">{{ commune }}</span></div>
+    <div style="font-size:9.5pt">مديرية المصالح</div>
+    <div style="font-size:9.5pt">مكتب الوعاء الضريبي</div>
+  </div>
+  <div class="box-logo">
+    <div class="seal">🏛️</div>
+  </div>
+  <div class="box-ref">
+    <div class="ref-lbl">عدد</div>
+    <div class="ref-val">{{ avis_num }}</div>
+    <div class="ref-lbl" style="margin-top:4px">تاريخ</div>
+    <div class="ref-val">{{ today }}</div>
+    <div class="ref-lbl" style="margin-top:4px">رقم المرجع</div>
+    <div class="ref-val">{{ terrain.numero_terrain }}</div>
+  </div>
+</div>
+
+<!-- ── DESTINATAIRE ── -->
+<div class="dest">
+  <div class="title-to">رئيس المجلس الجماعي لـ <strong>{{ commune }}</strong></div>
+  <div style="margin: 6px 0; font-size: 11pt; color: #555;">إلـــــى</div>
+  <div>السيد(ة) : <span class="name">{{ terrain.prenom or '' }} {{ terrain.nom or terrain.raison_sociale or '' }}</span></div>
+  <div class="cin-addr">
+    {% if terrain.cin %}الحامل لبطاقة التعريف الوطنية رقم : <strong>{{ terrain.cin }}</strong>{% endif %}
+    {% if terrain.ctb_adresse %}<br>الساكن بـ : {{ terrain.ctb_adresse }}{% endif %}
+  </div>
+</div>
+
+<!-- ── OBJET ── -->
+<div class="objet">
+  الموضوع : <span>حول أداء الرسم على الأراضي الحضرية غير المبنية</span>
+</div>
+
+<!-- ── CORPS ── -->
+<div class="corps">
+  <p style="text-align:center">ـــ سلام تام بوجود مولانا الإمام ـــ</p>
+  <p style="text-align:center">وبعـد،</p>
+
+  <p>
+    صلة بالموضوع المشار إليه أعلاه، وبناءاً على الإحصاء الذي قامت به مصالح الجماعة، تفيدكم الجماعة بأنه
+    تقيد بسجلاتها <span class="highlight">قطعة أرضية (البقعة) الغير مبنية</span> رقم
+    <span class="highlight">{{ terrain.titre_foncier or terrain.numero_terrain }}</span>
+    المتواجدة بـ <strong>{{ terrain.adresse or '....................' }}</strong>،
+    يبلغ مساحتها <span class="highlight">{{ "%.0f"|format(terrain.superficie or 0) }} م²</span>،
+    وهي مسجلة باسمكم.
+  </p>
+
+  <p>
+    وعليه، فإنكم ملزمون بأداء <span class="highlight">الرسم على الأراضي الحضرية غير المبنية</span>
+    طبقاً للمادة <strong>39 إلى 46</strong> من القانون رقم <strong>47.06</strong> المتعلق بجبايات الجماعات الترابية،
+    وذلك عن السنوات التالية :
+  </p>
+
+  <!-- Tableau des années -->
+  <table class="detail-table">
+    <thead>
+      <tr>
+        <th>السنة</th>
+        <th>المساحة (م²)</th>
+        <th>المبلغ الأصلي (درهم)</th>
+        <th>الزيادات والغرامات (درهم)</th>
+        <th>المجموع (درهم)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set total_all = 0 %}
+      {% for a in annees_detail %}
+      <tr {% if loop.last %}class="total-row"{% endif %}>
+        <td><strong>{{ a.annee }}</strong></td>
+        <td>{{ "%.0f"|format(terrain.superficie or 0) }}</td>
+        <td>{{ "%.2f"|format(a.principal) }}</td>
+        <td style="color:#dc2626">{{ "%.2f"|format(a.penalite + a.majoration + a.amende) }}</td>
+        <td><strong>{{ "%.2f"|format(a.total) }}</strong></td>
+      </tr>
+      {% endfor %}
+      <tr class="total-row">
+        <td colspan="4" style="text-align:right">المجموع الإجمالي الواجب أداؤه</td>
+        <td><span class="montant">{{ "%.2f"|format(total_montant) }} درهم</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    لذا، فإننا ندعوكم إلى <span class="highlight">التقدم إلى مصالح الجماعة لتسوية وضعيتكم الجبائية</span>
+    وإيداع إقراركم في أجل أقصاه <strong>{{ date_limite }}</strong>،
+    وذلك تجنباً لتطبيق زيادة قدرها <strong>15%</strong> ولا تقل عن <strong>500 درهم</strong>
+    طبقاً للمادة <strong>147</strong> من القانون رقم 47.06 المذكور.
+  </p>
+
+  <p>تقبلوا خالص التقدير والاحترام.</p>
+  <p style="text-align:center">والسلام</p>
+</div>
+
+<!-- ── SIGNATURE ── -->
+<div class="footer-sign">
+  <div class="footer-date">
+    {{ commune or '' }} في {{ today }}
+  </div>
+  <div class="footer-president">
+    <div class="title">رئيس المجلس الجماعي</div>
+    <div class="sig-area">التوقيع والختم</div>
+  </div>
+</div>
+
+<!-- ── PIED DE PAGE ── -->
+<div class="footnote">
+  <span>المرجع القانوني: المادة 39-46 من القانون 47.06</span>
+  <span>{{ commune }} — مديرية المصالح المالية</span>
+</div>
+
+</body>
+</html>

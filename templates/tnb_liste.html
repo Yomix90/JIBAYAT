@@ -1,52 +1,117 @@
 {% extends 'base.html' %}
 {% block title %}TNB — Terrains{% endblock %}
 {% block page_title %}🏗️ Taxe sur les Terrains Urbains Non Bâtis{% endblock %}
+{% block extra_head %}
+<style>
+.sel-bar-tnb { position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);
+  background:#1e3a5f;color:#fff;border-radius:12px;padding:12px 20px;
+  display:flex;align-items:center;gap:12px;z-index:5000;
+  box-shadow:0 8px 30px rgba(0,0,0,.3);transition:transform .3s ease;min-width:380px; }
+.sel-bar-tnb.visible { transform:translateX(-50%) translateY(0); }
+.sel-bar-tnb .sc { font-weight:800;font-size:.95rem;white-space:nowrap; }
+.btn-avis-lot { background:#c8a84b;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:.85rem; }
+.btn-ann { background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:9px 12px;font-size:.82rem;cursor:pointer; }
+.ctb-link { cursor:pointer;color:var(--primary);text-decoration:none;font-weight:700; }
+.ctb-link:hover { text-decoration:underline; }
+.filter-row { display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--border); }
+.filter-row select, .filter-row input { padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:var(--card);max-width:160px; }
+</style>
+{% endblock %}
 {% block content %}
 
-<div class="alert alert-info" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-  <span>
-    📋 <strong>Loi 47-06 Art.39-46</strong> — Déclaration avant le 31 Mars chaque année.
-    {% if tarifs %}
-      {% for t in tarifs %}
-        | <strong>{{ t.libelle }}</strong> : {{ t.valeur }} {{ t.unite }}
-      {% endfor %}
-    {% else %}
-      | <span style="color:var(--warn-bd)">⚠️ Aucun tarif TNB configuré —
-      <a href="{{ url_for('config.arretes_fiscaux') }}" style="color:inherit">Configurer les tarifs</a></span>
-    {% endif %}
-  </span>
-  <a href="{{ url_for('export_excel', module='TNB') }}" class="btn btn-outline btn-sm">📊 Export Excel</a>
+<!-- Modal info contribuable -->
+<div id="modal-ctb" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:28px;min-width:380px;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0;color:var(--primary)">👤 Informations Contribuable</h3>
+      <button onclick="document.getElementById('modal-ctb').style.display='none'" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#666">✕</button>
+    </div>
+    <div id="ctb-info-body"></div>
+  </div>
 </div>
+
+<div class="alert alert-info" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+  <span>📋 <strong>Loi 47-06 Art.39-46</strong> — Déclaration avant le 31 Mars chaque année.
+    {% if tarifs %}{% for t in tarifs %}| <strong>{{ t.libelle }}</strong> : {{ t.valeur }} {{ t.unite }}{% endfor %}
+    {% else %}| <span style="color:var(--warn-bd)">⚠️ Aucun tarif TNB —
+    <a href="{{ url_for('config.arretes_fiscaux') }}" style="color:inherit">Configurer</a></span>{% endif %}
+  </span>
+  <div style="display:flex;gap:8px">
+    <a href="{{ url_for('export_excel', module='TNB') }}" class="btn btn-outline btn-sm">📊 Excel</a>
+    <button onclick="openModal('addTerrain')" class="btn btn-primary btn-sm">➕ Nouveau Terrain</button>
+  </div>
+</div>
+
+<!-- Formulaire lot avis -->
+<form id="lot-form" method="post" action="{{ url_for('tnb.tnb_avis_lot') }}" style="display:contents">
 
 <div class="card">
   <div class="card-header">
     <h3>Liste des Terrains ({{ items|length }})</h3>
-    <button onclick="openModal('addTerrain')" class="btn btn-primary btn-sm">➕ Nouveau Terrain</button>
+    <button type="button" onclick="selectAllChk()" class="btn btn-outline btn-sm">☑ Tout sélectionner</button>
   </div>
-  <div class="search-bar">
-    <form method="get" style="display:flex;gap:8px;flex:1">
-      <input name="q" value="{{ q }}" placeholder="Chercher par propriétaire, N° terrain, titre foncier...">
-      <button type="submit" class="btn btn-primary btn-sm">🔍</button>
-      {% if q %}<a href="{{ url_for('tnb.tnb_liste') }}" class="btn btn-outline btn-sm">✕</a>{% endif %}
-    </form>
+
+  <!-- Filtres -->
+  <div class="filter-row">
+    <input type="text" id="q-input" placeholder="🔍 Nom, N° terrain, TF, CIN..." oninput="applyFilters()" value="{{ q }}">
+    <select id="f-statut" onchange="applyFilters()">
+      <option value="">Tous statuts paiement</option>
+      <option value="impaye">⏳ Impayés uniquement</option>
+      <option value="ajour">✅ À jour uniquement</option>
+    </select>
+    <select id="f-zone" onchange="applyFilters()">
+      <option value="">Toutes zones</option>
+      {% for z in zones %}<option value="{{ z }}">Zone {{ z }}</option>{% endfor %}
+    </select>
+    <select id="f-terrain-statut" onchange="applyFilters()">
+      <option value="">Tous types</option>
+      <option value="non_bati">🏗️ Non bâti</option>
+      <option value="en_construction">🚧 En construction</option>
+      <option value="construit">🏠 Construit</option>
+    </select>
+    {% if q %}<a href="{{ url_for('tnb.tnb_liste') }}" class="btn btn-outline btn-sm">✕ Effacer</a>{% endif %}
   </div>
+
   <div class="table-responsive">
-    <table>
+    <table id="tnb-table">
       <thead><tr>
-        <th>N° Terrain</th><th>Propriétaire</th><th>Adresse</th>
-        <th>Zone</th><th>Superficie</th><th>Statut</th><th>Restes à Payer</th><th>Actions</th>
+        <th style="width:32px"><input type="checkbox" id="chk-all" onclick="toggleAll(this)" style="width:16px;height:16px;accent-color:var(--primary)"></th>
+        <th>N° Terrain</th>
+        <th>Propriétaire</th>
+        <th>CIN / RC</th>
+        <th>Zone</th>
+        <th>Superficie</th>
+        <th>Statut</th>
+        <th>Restes à Payer</th>
+        <th>Actions</th>
       </tr></thead>
       <tbody>
         {% for t in items %}
-        <tr>
+        <tr class="tnb-row"
+            data-search="{{ t.nom|lower }} {{ (t.prenom or '')|lower }} {{ (t.raison_sociale or '')|lower }} {{ t.numero_terrain|lower }} {{ (t.titre_foncier or '')|lower }} {{ (t.cin or '')|lower }} {{ (t.rc or '')|lower }}"
+            data-zone="{{ t.zone or '' }}"
+            data-statut="{{ t.statut or '' }}"
+            data-paiement="{{ 'impaye' if t.nb_non_paye > 0 else 'ajour' }}">
+          <td>
+            {% if t.nb_non_paye > 0 %}
+            <input type="checkbox" name="terrain_ids" value="{{ t.id }}" class="ter-chk"
+                   onchange="updateSelBar()" style="width:16px;height:16px;accent-color:var(--primary)">
+            {% else %}
+            <span style="width:16px;display:inline-block"></span>
+            {% endif %}
+          </td>
           <td><strong style="color:var(--primary)">{{ t.numero_terrain }}</strong></td>
           <td>
-            <strong>{{ t.nom }} {{ t.prenom or t.raison_sociale or '' }}</strong>
-            <br><small style="color:var(--muted)">{{ t.ctb_num }}</small>
+            <a class="ctb-link" onclick="showCtb({{ t.contribuable_id }},
+              '{{ t.nom }} {{ t.prenom or t.raison_sociale or "" }}',
+              '{{ t.cin or "" }}','{{ t.rc or "" }}',
+              '{{ t.ctb_adresse_ctb or "" }}','{{ t.telephone or "" }}','{{ t.email or "" }}'
+              )">{{ t.nom }} {{ t.prenom or t.raison_sociale or '' }}</a>
           </td>
-          <td style="max-width:160px">
-            {{ t.adresse }}
-            {% if t.adresse_ar %}<br><small dir="rtl" style="color:var(--muted)">{{ t.adresse_ar }}</small>{% endif %}
+          <td>
+            {% if t.cin %}<span class="badge b-info" style="font-size:.65rem">🪪 {{ t.cin }}</span>{% endif %}
+            {% if t.rc %}<span class="badge b-sec" style="font-size:.65rem">RC {{ t.rc }}</span>{% endif %}
+            {% if not t.cin and not t.rc %}<span style="color:var(--muted)">—</span>{% endif %}
           </td>
           <td><span class="badge b-primary">Zone {{ t.zone }}</span></td>
           <td><strong>{{ t.superficie }} m²</strong></td>
@@ -59,25 +124,39 @@
           <td>
             {% if t.nb_non_paye > 0 %}
               <strong style="color:var(--danger)">{{ "%.2f"|format(t.total_non_paye) }} DH</strong><br>
-              <small style="color:var(--muted)">{{ t.nb_non_paye }} année(s)</small>
+              <small style="color:var(--muted)">{{ t.nb_non_paye }} an(s)</small>
             {% else %}
               <span class="badge b-ok">À jour ✅</span>
             {% endif %}
           </td>
           <td>
-            <div class="df gap-2">
-              <a href="{{ url_for('tnb.tnb_detail', id=t.id) }}" class="btn btn-primary btn-xs">🔍 Détail</a>
-              <a href="{{ url_for('tnb.tnb_paiement', id=t.id) }}" class="btn btn-accent btn-xs">💳 Paiement</a>
+            <div class="df gap-1" style="flex-wrap:wrap">
+              <a href="{{ url_for('tnb.tnb_detail', id=t.id) }}" class="btn btn-primary btn-xs">🔍</a>
+              <a href="{{ url_for('tnb.tnb_paiement', id=t.id) }}" class="btn btn-accent btn-xs">💳</a>
+              {% if t.nb_non_paye > 0 %}
+              <a href="{{ url_for('tnb.tnb_avis_non_paiement', id=t.id) }}" target="_blank"
+                 class="btn btn-xs" style="background:#c8a84b;color:#fff" title="Avis de non-paiement">📜 Avis</a>
+              {% endif %}
             </div>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="empty-state"><span class="ei">🏗️</span>Aucun terrain enregistré</td></tr>
+        <tr><td colspan="9" class="empty-state"><span class="ei">🏗️</span>Aucun terrain enregistré</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+
+<!-- Barre flottante sélection lot -->
+<div id="sel-bar-tnb" class="sel-bar-tnb">
+  <div class="sc">📜 <span id="sel-n">0</span> terrain(s) sélectionné(s)</div>
+  <div style="flex:1"></div>
+  <button type="submit" class="btn-avis-lot">📜 Générer Avis par Lot</button>
+  <button type="button" class="btn-ann" onclick="clearSelTnb()">✕</button>
+</div>
+
+</form>
 
 <!-- Modal Ajout Terrain -->
 <div class="modal-overlay" id="addTerrain">
@@ -93,7 +172,7 @@
           <select name="contribuable_id" required>
             <option value="">— Sélectionner —</option>
             {% for c in contribuables %}
-            <option value="{{ c.id }}">{{ c.numero }} — {{ c.nom }} {{ c.prenom or c.raison_sociale or '' }}</option>
+            <option value="{{ c.id }}">{{ c.numero }} — {{ c.nom }} {{ c.prenom or c.raison_sociale or '' }}{% if c.cin %} ({{ c.cin }}){% endif %}</option>
             {% endfor %}
           </select>
         </div>
@@ -105,16 +184,10 @@
           <div class="form-group">
             <label>Zone</label>
             <select name="zone">
-              {% if tarifs %}
-                {% for t in tarifs %}
-                <option value="{{ t.libelle[-1] if t.libelle[-1] in 'ABCDE' else loop.index }}">
-                  {{ t.libelle }} — {{ t.valeur }} {{ t.unite }}
-                </option>
-                {% endfor %}
-              {% else %}
-                <option value="A">Zone A</option>
-                <option value="B">Zone B</option>
-                <option value="C">Zone C</option>
+              {% if tarifs %}{% for t in tarifs %}
+              <option value="{{ t.libelle[-1] if t.libelle[-1] in 'ABCDE' else loop.index }}">{{ t.libelle }} — {{ t.valeur }} {{ t.unite }}</option>
+              {% endfor %}{% else %}
+              <option value="A">Zone A</option><option value="B">Zone B</option><option value="C">Zone C</option>
               {% endif %}
             </select>
           </div>
@@ -138,4 +211,61 @@
     </div>
   </div>
 </div>
+
+<script>
+// ── Filtres ─────────────────────────────────────────────
+function applyFilters(){
+  const q = document.getElementById('q-input').value.toLowerCase();
+  const statPaie = document.getElementById('f-statut').value;
+  const zone = document.getElementById('f-zone').value;
+  const statTerrain = document.getElementById('f-terrain-statut').value;
+  document.querySelectorAll('.tnb-row').forEach(row => {
+    const ok =
+      (!q || row.dataset.search.includes(q)) &&
+      (!statPaie || row.dataset.paiement === statPaie) &&
+      (!zone || row.dataset.zone === zone) &&
+      (!statTerrain || row.dataset.statut === statTerrain);
+    row.style.display = ok ? '' : 'none';
+  });
+  updateSelBar();
+}
+
+// ── Sélection ────────────────────────────────────────────
+function toggleAll(chk){
+  document.querySelectorAll('.ter-chk').forEach(c => c.checked = chk.checked);
+  updateSelBar();
+}
+function selectAllChk(){
+  document.querySelectorAll('.tnb-row:not([style*="display: none"]) .ter-chk').forEach(c => c.checked = true);
+  updateSelBar();
+}
+function clearSelTnb(){
+  document.querySelectorAll('.ter-chk').forEach(c => c.checked = false);
+  document.getElementById('chk-all').checked = false;
+  updateSelBar();
+}
+function updateSelBar(){
+  const n = document.querySelectorAll('.ter-chk:checked').length;
+  document.getElementById('sel-n').textContent = n;
+  const bar = document.getElementById('sel-bar-tnb');
+  if(n > 0) bar.classList.add('visible');
+  else bar.classList.remove('visible');
+}
+
+// ── Modal contribuable ────────────────────────────────────
+function showCtb(id, nom, cin, rc, adresse, tel, email){
+  const body = document.getElementById('ctb-info-body');
+  body.innerHTML = `
+    <table style="width:100%;font-size:.88rem;border-collapse:collapse">
+      <tr><td style="padding:6px;color:#666;width:40%">Nom complet</td><td style="padding:6px;font-weight:700">${nom}</td></tr>
+      ${cin ? `<tr><td style="padding:6px;color:#666">🪪 CIN</td><td style="padding:6px;font-weight:700;color:var(--primary)">${cin}</td></tr>` : ''}
+      ${rc ? `<tr><td style="padding:6px;color:#666">RC</td><td style="padding:6px;font-weight:700">${rc}</td></tr>` : ''}
+      ${adresse ? `<tr><td style="padding:6px;color:#666">📍 Adresse</td><td style="padding:6px">${adresse}</td></tr>` : ''}
+      ${tel ? `<tr><td style="padding:6px;color:#666">📞 Téléphone</td><td style="padding:6px">${tel}</td></tr>` : ''}
+      ${email ? `<tr><td style="padding:6px;color:#666">✉️ Email</td><td style="padding:6px">${email}</td></tr>` : ''}
+    </table>`;
+  document.getElementById('modal-ctb').style.display = 'flex';
+}
+document.getElementById('modal-ctb').addEventListener('click', function(e){ if(e.target===this) this.style.display='none'; });
+</script>
 {% endblock %}

@@ -261,8 +261,8 @@
     <div style="font-size:13pt;font-weight:900">المملكة المغربية</div>
     <hr class="divider">
     <div>وزارة الداخلية</div>
-    <div style="font-size:10pt;color:#444">جهة ..............................</div>
-    <div style="font-size:10pt;color:#444">عمالة/إقليم ........................</div>
+    <div style="font-size:10pt;color:#444">جهة {{ province }}</div>
+    <div style="font-size:10pt;color:#444">عمالة/إقليم {{ province }}</div>
     <div style="margin-top:4px">جماعة <strong style="color:#c8a84b">{{ commune }}</strong></div>
   </div>
 
@@ -357,19 +357,6 @@
     <div class="field-line short">100 %</div>
   </div>
 
-  <div class="field-row">
-    <div class="field-label">المنطقة الضريبية :</div>
-    <div class="field-line short">{{ terrain.zone or '' }}</div>
-    <div class="field-label" style="margin-right:20px">تاريخ الاقتناء :</div>
-    <div class="field-line short">{{ terrain.date_acquisition or '...........' }}</div>
-  </div>
-</div>
-
-<!-- ══════════ Lignes supplémentaires ══════════ -->
-<div class="blank-lines">
-  <div class="blank-line"></div>
-  <div class="blank-line"></div>
-  <div class="blank-line"></div>
 </div>
 
 <!-- ══════════ FOOTER ══════════ -->
@@ -382,10 +369,6 @@
     </div>
     <div class="sig-box" style="min-width:180px">
       <strong>إمضاء المصرح</strong>
-      <div style="height:40px"></div>
-    </div>
-    <div class="sig-box" style="min-width:180px">
-      <strong>خاتم المؤسسة (إن وُجِد)</strong>
       <div style="height:40px"></div>
     </div>
   </div>

@@ -123,8 +123,14 @@
             <a href="{{ url_for('tnb.tnb_pdf_declaration', id=terrain.id, annee=a.annee) }}" target="_blank"
                class="btn btn-outline btn-xs" style="flex-shrink:0; font-size:0.78rem; white-space:nowrap"
                onclick="event.stopPropagation()">
-              🖨️ Avis {{ a.annee }}
-            </a>
+              🖨️ Ikrar {{ a.annee }}
+             </a>
+             <a href="{{ url_for('tnb.tnb_avis_non_paiement', id=terrain.id) }}" target="_blank"
+                class="btn btn-xs" style="flex-shrink:0;background:#c8a84b;color:#fff;font-size:0.78rem;white-space:nowrap"
+                onclick="event.stopPropagation()">
+               📜 Avis {{ a.annee }}
+             </a>
+
           </div>
           {% endfor %}
         </div>
@@ -138,7 +144,8 @@
 
         {% if user.peut_creer_bulletin or user.peut_ajouter %}
         <div class="mt-4">
-          <button type="submit" class="btn btn-danger" style="width:100%">📋 Générer Déclarations Sélectionnées</button>
+          <button type="submit" class="btn btn-primary" style="width:100%">📤 Envoyer Bulletin de Versement</button>
+
         </div>
         {% endif %}
       </form>

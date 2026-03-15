@@ -12,13 +12,18 @@ def tnb_liste():
     user = get_current_user()
     conn = get_db()
     q = request.args.get('q', '')
-    sql = '''SELECT t.*, c.nom, c.prenom, c.raison_sociale, c.numero as ctb_num
+    sql = '''SELECT t.*, c.nom, c.prenom, c.raison_sociale, c.numero as ctb_num, c.cin, c.rc
         FROM terrains t JOIN contribuables c ON t.contribuable_id=c.id WHERE t.actif=1'''
+
     params = []
     if q:
         sql += ' AND (c.nom LIKE ? OR t.numero_terrain LIKE ? OR t.adresse LIKE ? OR t.titre_foncier LIKE ?)'
         params = [f'%{q}%'] * 4
     items_raw = conn.execute(sql + ' ORDER BY t.date_creation DESC', params).fetchall()
+    
+    # filtre zone/statut
+    zone_f = request.args.get('zone', '')
+    statut_f = request.args.get('statut', '')
     
     # Préchauffage des déclarations et tarifs pour optimiser le calcul
     all_decls = conn.execute("SELECT reference_id, annee FROM declarations WHERE module='TNB' AND statut='paye'").fetchall()
@@ -78,10 +83,12 @@ def tnb_liste():
         item['total_non_paye'] = round(total_unpaid, 2)
         items.append(item)
     
-    contribuables = conn.execute('SELECT id,numero,nom,prenom,raison_sociale FROM contribuables WHERE actif=1').fetchall()
+    contribuables = conn.execute('SELECT id,numero,nom,prenom,raison_sociale,cin,rc,telephone,email,adresse FROM contribuables WHERE actif=1').fetchall()
     tarifs = get_tarifs_module('TNB')
+    zones = list(set(i['zone'] for i in items_raw if i['zone']))
     conn.close()
-    return render_template('tnb_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs, q=q)
+    return render_template('tnb_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs, q=q, zones=zones)
+
 
 @bp.route('/tnb/ajouter', methods=['POST'])
 @login_required
@@ -336,24 +343,29 @@ def tnb_multi_declarations(id):
              
         decl_id = cur.lastrowid
         
-        # Création auto du bulletin manuel groupé si total >= 200 et num_bulletin fourni
-        if statut_decl == 'emis' and num_bulletin_manuel:
-            # On ajoute un suffixe d'année car le N° doit être unitaire unique dans la DB.
-            # Le régisseur verra le même N° prefixé dans l'outil (ex: B123-2022, B123-2023)
-            num_bul = f"{num_bulletin_manuel}-{annee}"
+    # Ne créer un bulletin que pour la dernière année sélectionnée
+    if num_bulletin_manuel and declarations_creees > 0:
+        # Trouver la déclaration de la dernière année
+        derniere_annee = max(int(a) for a in annees)
+        decl_last = conn.execute(
+            'SELECT id, montant_total, contribuable_id FROM declarations WHERE module="TNB" AND reference_id=? AND annee=? ORDER BY id DESC LIMIT 1',
+            (id, derniere_annee)
+        ).fetchone()
+        if decl_last:
             try:
                 conn.execute('''INSERT INTO bulletins (numero_bulletin,declaration_id,contribuable_id,
                                 commune_id,montant,mode_paiement,date_paiement,agent_id,statut) 
                                 VALUES (?,?,?,?,?,?,?,?,?)''',
-                            (num_bul, decl_id, contrib_id, 1, total, 'bulletin_manuel', date_decl, user['id'], 'en_attente'))
-            except: pass
-            
-        declarations_creees += 1
-             
+                            (num_bulletin_manuel, decl_last['id'], decl_last['contribuable_id'],
+                             1, decl_last['montant_total'], 'bulletin_manuel', date_decl, user['id'], 'en_attente'))
+            except Exception as e:
+                flash(f'⚠️ Bulletin non créé : {e}', 'warn')
+
     conn.commit()
     conn.close()
-    flash(f'{len(annees)} déclaration(s) générée(s) ✅', 'success')
+    flash(f'{declarations_creees} déclaration(s) générée(s) ✅ — Bulletin de versement envoyé en attente de validation', 'success')
     return redirect(url_for('tnb.tnb_paiement', id=id))
+
 
 @bp.route('/tnb/<int:id>/pdf_declaration/<int:annee>')
 @login_required
@@ -365,5 +377,145 @@ def tnb_pdf_declaration(id, annee):
     decl = conn.execute('''SELECT * FROM declarations 
         WHERE module="TNB" AND reference_id=? AND annee=? AND statut!="annule" ORDER BY id DESC LIMIT 1''', (id, annee)).fetchone()
     commune = conn.execute('SELECT nom FROM communes LIMIT 1').fetchone()
+    province = conn.execute('SELECT province FROM communes LIMIT 1').fetchone()
     conn.close()
-    return render_template('tnb_declaration_pdf.html', terrain=terrain, decl=decl, annee=annee, commune=commune['nom'] if commune else 'المملكة المغربية')
+    prov = province['province'] if province and 'province' in province.keys() else ''
+    return render_template('tnb_declaration_pdf.html', terrain=terrain, decl=decl, annee=annee,
+                           commune=commune['nom'] if commune else '', province=prov)
+
+
+# ═══════════════════════════════════════════════════════════
+# AVIS DE NON-PAIEMENT — individuel
+# ═══════════════════════════════════════════════════════════
+@bp.route('/tnb/<int:id>/avis_non_paiement')
+@login_required
+def tnb_avis_non_paiement(id):
+    conn = get_db()
+    terrain = conn.execute('''SELECT t.*, c.nom, c.prenom, c.raison_sociale,
+        c.adresse as ctb_adresse, c.cin, c.rc, c.telephone, c.email
+        FROM terrains t JOIN contribuables c ON t.contribuable_id=c.id WHERE t.id=?''', (id,)).fetchone()
+    if not terrain:
+        flash('Terrain introuvable', 'danger')
+        return redirect(url_for('tnb.tnb_liste'))
+
+    commune_row = conn.execute('SELECT * FROM communes LIMIT 1').fetchone()
+    all_tarifs = conn.execute("SELECT t.code_tarif, t.libelle, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' ORDER BY t.date_debut DESC").fetchall()
+    amende_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
+    conn.close()
+
+    debut = 2020
+    if terrain['date_acquisition']:
+        try: debut = max(2020, int(terrain['date_acquisition'][:4]))
+        except: pass
+
+    annees_man = annees_non_payees('TNB', id, debut)
+    zone = str(terrain['zone'] or 'A')
+    sup = float(terrain['superficie'] or 0.0)
+    today_str = date.today().isoformat()
+    annees_detail = []
+    total_montant = 0.0
+
+    for y in annees_man:
+        taux = 0.0
+        for t in all_tarifs:
+            if str(t['date_debut']) <= f"{y}-12-31":
+                if not t['date_fin'] or str(t['date_fin']) >= f"{y}-01-01":
+                    taux = float(t['valeur']); break
+        principal = round(sup * taux, 2)
+        pen, maj, amende = 0.0, 0.0, 0.0
+        try: d_ech = date(y, 2, 28).isoformat()
+        except: d_ech = date(y, 2, 28).isoformat()
+        if principal > 0 and today_str > d_ech:
+            amende = max(round(principal * amende_pct / 100, 2), 500)
+            pen, maj = calculer_penalites(principal, d_ech, today_str, 'TNB')
+        tot = round(principal + pen + maj + amende, 2)
+        total_montant += tot
+        annees_detail.append({'annee': y, 'principal': principal, 'penalite': pen, 'majoration': maj, 'amende': amende, 'total': tot})
+
+    # Numéro de l'avis : sequential
+    from database import get_db as _gdb
+    _c = _gdb()
+    n_avis = _c.execute("SELECT COUNT(*) as c FROM declarations WHERE module='TNB'").fetchone()['c'] + 1
+    _c.close()
+    avis_num = f"{n_avis}/{date.today().year}"
+    commune = commune_row['nom'] if commune_row else ''
+    province = commune_row['province'] if commune_row and 'province' in commune_row.keys() else ''
+
+    return render_template('tnb_avis_non_paiement.html',
+        terrain=terrain, annees_detail=annees_detail, total_montant=round(total_montant, 2),
+        commune=commune, province=province, today=today_str,
+        avis_num=avis_num, date_limite=f"{date.today().year}-03-31")
+
+
+# ═══════════════════════════════════════════════════════════
+# AVIS DE NON-PAIEMENT — par lot (plusieurs terrains)
+# ═══════════════════════════════════════════════════════════
+@bp.route('/tnb/avis_lot', methods=['POST'])
+@login_required
+def tnb_avis_lot():
+    """Génère un avis de non-paiement pour chaque terrain sélectionné (nouvelle page par terrain)."""
+    terrain_ids = request.form.getlist('terrain_ids')
+    if not terrain_ids:
+        flash('Aucun terrain sélectionné pour la génération d\'avis', 'warn')
+        return redirect(url_for('tnb.tnb_liste'))
+    # Redirige vers la page multi-avis avec les IDs
+    ids_str = ','.join(terrain_ids)
+    return redirect(url_for('tnb.tnb_avis_multiple', ids=ids_str))
+
+
+@bp.route('/tnb/avis_multiple')
+@login_required
+def tnb_avis_multiple():
+    """Affiche plusieurs avis de non-paiement sur une même page (pour impression)."""
+    ids_str = request.args.get('ids', '')
+    terrain_ids = [int(i) for i in ids_str.split(',') if i.strip().isdigit()]
+    conn = get_db()
+    all_tarifs = conn.execute("SELECT t.code_tarif, t.libelle, t.valeur, t.date_debut, t.date_fin FROM tarifs t JOIN rubriques r ON t.rubrique_id=r.id WHERE r.module='TNB' ORDER BY t.date_debut DESC").fetchall()
+    amende_pct = get_param('TNB', 'AMENDE_NON_DECLARATION', 15)
+    commune_row = conn.execute('SELECT * FROM communes LIMIT 1').fetchone()
+    commune = commune_row['nom'] if commune_row else ''
+    province = commune_row['province'] if commune_row and 'province' in commune_row.keys() else ''
+    today_str = date.today().isoformat()
+
+    avis_list = []
+    for tid in terrain_ids:
+        terrain = conn.execute('''SELECT t.*, c.nom, c.prenom, c.raison_sociale,
+            c.adresse as ctb_adresse, c.cin, c.rc, c.telephone, c.email
+            FROM terrains t JOIN contribuables c ON t.contribuable_id=c.id WHERE t.id=?''', (tid,)).fetchone()
+        if not terrain: continue
+        debut = 2020
+        if terrain['date_acquisition']:
+            try: debut = max(2020, int(terrain['date_acquisition'][:4]))
+            except: pass
+        annees_man = annees_non_payees('TNB', tid, debut)
+        if not annees_man: continue  # À jour, pas d'avis
+        zone = str(terrain['zone'] or 'A')
+        sup = float(terrain['superficie'] or 0.0)
+        annees_detail = []
+        total_montant = 0.0
+        for y in annees_man:
+            taux = 0.0
+            for t in all_tarifs:
+                if str(t['date_debut']) <= f"{y}-12-31":
+                    if not t['date_fin'] or str(t['date_fin']) >= f"{y}-01-01":
+                        taux = float(t['valeur']); break
+            principal = round(sup * taux, 2)
+            pen, maj, amende = 0.0, 0.0, 0.0
+            try: d_ech = date(y, 2, 28).isoformat()
+            except: d_ech = date(y, 2, 28).isoformat()
+            if principal > 0 and today_str > d_ech:
+                amende = max(round(principal * amende_pct / 100, 2), 500)
+                pen, maj = calculer_penalites(principal, d_ech, today_str, 'TNB')
+            tot = round(principal + pen + maj + amende, 2)
+            total_montant += tot
+            annees_detail.append({'annee': y, 'principal': principal, 'penalite': pen, 'majoration': maj, 'amende': amende, 'total': tot})
+        n_avis = len(avis_list) + 1
+        avis_list.append({
+            'terrain': dict(terrain), 'annees_detail': annees_detail,
+            'total_montant': round(total_montant, 2),
+            'avis_num': f"{n_avis}/{date.today().year}"
+        })
+    conn.close()
+    return render_template('tnb_avis_lot.html', avis_list=avis_list, commune=commune,
+                           province=province, today=today_str, date_limite=f"{date.today().year}-03-31")
+

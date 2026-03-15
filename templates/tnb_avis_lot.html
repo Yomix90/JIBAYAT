@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>إعذارات جماعية — الرسم على الأراضي غير المبنية</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Cairo', sans-serif; background: #f0f4ff; }
+  .no-print { text-align: center; padding: 20px; background: #1e3a5f; color: #fff; }
+  .btn-print { background: #c8a84b; color: #fff; border: none; border-radius: 8px;
+    padding: 12px 32px; font-family: 'Cairo', sans-serif; font-size: 14px; font-weight: 700;
+    cursor: pointer; margin: 0 8px; }
+  .btn-back { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.4);
+    border-radius: 8px; padding: 12px 24px; font-family: 'Cairo', sans-serif; font-size: 14px; cursor: pointer; }
+  .count-badge { background: #c8a84b; color: #fff; border-radius: 20px; padding: 4px 16px;
+    font-size: 12px; font-weight: 700; margin-right: 12px; }
+  @media screen { .avis-page { background: #fff; margin: 20px auto; max-width: 210mm;
+    box-shadow: 0 4px 24px rgba(0,0,0,.12); page-break-after: always; } }
+  @media print { .no-print { display: none; } .avis-page { page-break-after: always; margin: 0; } }
+
+  /* Styles internes (copie du template individuel) */
+  .avis-content { padding: 15mm 18mm 20mm 18mm; font-size: 11.5pt; color: #111; direction: rtl; line-height: 1.8; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+            margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid #1e3a5f; }
+  .box-kingdom { width: 35%; font-size: 10.5pt; font-weight: 700; color: #1e3a5f; line-height: 1.9; text-align: right; }
+  .box-logo { width: 12%; text-align: center; }
+  .seal { width: 64px; height: 64px; border: 3px double #1e3a5f; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 20pt; margin: 0 auto; }
+  .box-ref { width: 35%; font-size: 10pt; border: 1.5px solid #1e3a5f; border-radius: 6px;
+             padding: 8px 12px; background: #f8f9fc; text-align: right; line-height: 2; }
+  .ref-lbl { color: #666; font-size: 9.5pt; }
+  .ref-val { font-weight: 800; color: #1e3a5f; border-bottom: 1px dotted #aaa;
+             display: inline-block; min-width: 80px; }
+  .dest { text-align: center; margin: 16px 0; font-size: 12pt; font-weight: 700; }
+  .name { font-size: 13pt; font-weight: 900; color: #1e3a5f; border-bottom: 2px solid #c8a84b;
+          display: inline-block; padding: 2px 24px; }
+  .cin-addr { font-size: 10pt; color: #333; margin-top: 4px; font-weight: 600; }
+  .objet { background: #f0f4ff; border-right: 4px solid #1e3a5f; padding: 8px 14px;
+           margin: 14px 0; font-size: 11.5pt; font-weight: 800; }
+  .objet span { color: #1e3a5f; }
+  .corps { text-align: justify; font-size: 10.5pt; line-height: 1.9; }
+  .corps p { margin-bottom: 10px; }
+  .highlight { font-weight: 800; color: #1e3a5f; }
+  .montant-badge { font-weight: 900; color: #dc2626; font-size: 11pt;
+    background: #fee2e2; padding: 1px 8px; border-radius: 4px; }
+  .detail-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10pt; }
+  .detail-table th { background: #1e3a5f; color: #fff; padding: 6px 10px; text-align: center; font-weight: 700; }
+  .detail-table td { border: 1px solid #d1d5db; padding: 6px 10px; text-align: center; }
+  .detail-table tr:nth-child(even) td { background: #f8f9fc; }
+  .total-row td { background: #fee2e2 !important; font-weight: 900; color: #dc2626; }
+  .footer-sign { margin-top: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .footer-president .title { font-size: 10.5pt; font-weight: 900; color: #1e3a5f; }
+  .sig-area { border-top: 1px dashed #aaa; margin-top: 50px; padding-top: 4px; font-size: 9pt; color: #888; }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <span class="count-badge">{{ avis_list|length }} avis</span>
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimer tous les avis ({{ avis_list|length }})</button>
+  <button class="btn-back" onclick="window.history.back()">← Retour</button>
+</div>
+
+{% for av in avis_list %}
+<div class="avis-page">
+  <div class="avis-content">
+
+    <div class="header">
+      <div class="box-kingdom">
+        <div>المملكة المغربية</div>
+        <div>وزارة الداخلية</div>
+        <div>إقليم {{ province or '....................' }}</div>
+        <div>جماعة <strong style="color:#c8a84b">{{ commune }}</strong></div>
+        <div style="font-size:9pt">مكتب الوعاء الضريبي</div>
+      </div>
+      <div class="box-logo"><div class="seal">🏛️</div></div>
+      <div class="box-ref">
+        <div class="ref-lbl">عدد</div>
+        <div class="ref-val">{{ av.avis_num }}</div>
+        <div class="ref-lbl">تاريخ</div>
+        <div class="ref-val">{{ today }}</div>
+        <div class="ref-lbl">رقم الأرض</div>
+        <div class="ref-val">{{ av.terrain.numero_terrain }}</div>
+      </div>
+    </div>
+
+    <div class="dest">
+      <div style="font-size:10.5pt;color:#555">رئيس المجلس الجماعي لـ <strong>{{ commune }}</strong> — إلـى</div>
+      <div>السيد(ة) : <span class="name">{{ av.terrain.prenom or '' }} {{ av.terrain.nom or av.terrain.raison_sociale or '' }}</span></div>
+      <div class="cin-addr">
+        {% if av.terrain.cin %}الحامل لبطاقة التعريف رقم : <strong>{{ av.terrain.cin }}</strong>{% endif %}
+        {% if av.terrain.ctb_adresse %}<br>الساكن بـ : {{ av.terrain.ctb_adresse }}{% endif %}
+      </div>
+    </div>
+
+    <div class="objet">الموضوع : <span>حول أداء الرسم على الأراضي الحضرية غير المبنية</span></div>
+
+    <div class="corps">
+      <p style="text-align:center">ـ سلام تام بوجود مولانا الإمام ـ</p>
+      <p>
+        صلةً بالموضوع المشار إليه أعلاه، تفيدكم الجماعة بأنه تقيد بسجلاتها
+        <span class="highlight">قطعة أرضية غير مبنية</span> رقم
+        <strong>{{ av.terrain.titre_foncier or av.terrain.numero_terrain }}</strong>
+        بمساحة <span class="highlight">{{ "%.0f"|format(av.terrain.superficie or 0) }} م²</span>
+        بـ <strong>{{ av.terrain.adresse or '..............' }}</strong>، مسجلة باسمكم.
+      </p>
+      <p>
+        وعليه، فإنكم ملزمون بأداء الرسم عن السنوات التالية طبقاً للقانون رقم <strong>47.06</strong> :
+      </p>
+
+      <table class="detail-table">
+        <thead>
+          <tr><th>السنة</th><th>المبلغ الأصلي</th><th>الزيادات والغرامات</th><th>المجموع (درهم)</th></tr>
+        </thead>
+        <tbody>
+          {% for a in av.annees_detail %}
+          <tr><td><strong>{{ a.annee }}</strong></td>
+              <td>{{ "%.2f"|format(a.principal) }}</td>
+              <td style="color:#dc2626">{{ "%.2f"|format(a.penalite + a.majoration + a.amende) }}</td>
+              <td><strong>{{ "%.2f"|format(a.total) }}</strong></td></tr>
+          {% endfor %}
+          <tr class="total-row">
+            <td colspan="3" style="text-align:right">المجموع الإجمالي</td>
+            <td><span class="montant-badge">{{ "%.2f"|format(av.total_montant) }} درهم</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        ندعوكم إلى التسوية قبل <strong>{{ date_limite }}</strong> تجنباً للغرامات (15% لا تقل عن 500 درهم).
+      </p>
+      <p style="text-align:center">تقبلوا خالص التقدير والاحترام. والسلام</p>
+    </div>
+
+    <div class="footer-sign">
+      <div style="font-size:9.5pt;color:#555">{{ commune }} في {{ today }}</div>
+      <div class="footer-president">
+        <div class="title">رئيس المجلس الجماعي</div>
+        <div class="sig-area">التوقيع والختم</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endfor %}
+
+</body>
+</html>
