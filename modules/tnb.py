@@ -87,7 +87,7 @@ def tnb_liste():
     tarifs = get_tarifs_module('TNB')
     zones = list(set(i['zone'] for i in items_raw if i['zone']))
     conn.close()
-    return render_template('tnb_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs, q=q, zones=zones)
+    return render_template('tnb/tnb_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs, q=q, zones=zones)
 
 
 @bp.route('/tnb/ajouter', methods=['POST'])
@@ -128,7 +128,7 @@ def tnb_detail(id):
     tarifs = get_tarifs_module('TNB')
     annees_man = annees_non_payees('TNB', id)
     conn.close()
-    return render_template('tnb_detail.html', user=user, terrain=terrain, permis=permis,
+    return render_template('tnb/tnb_detail.html', user=user, terrain=terrain, permis=permis,
         declarations=declarations, transferts=transferts, contribuables=contribuables,
         tarifs=tarifs, annees_manquantes=annees_man, today=date.today().isoformat())
 
@@ -269,7 +269,7 @@ def tnb_paiement(id):
             autres_terrains.append(r)
     
     conn.close()
-    return render_template('tnb_paiement.html', user=user, terrain=terrain, 
+    return render_template('tnb/tnb_paiement.html', user=user, terrain=terrain, 
         declarations=declarations, annees_manquantes=annees_manquantes_details,
         tarifs=tarifs, params=params_tnb, today=today, autres_terrains=autres_terrains)
 
@@ -380,7 +380,7 @@ def tnb_pdf_declaration(id, annee):
     province = conn.execute('SELECT province FROM communes LIMIT 1').fetchone()
     conn.close()
     prov = province['province'] if province and 'province' in province.keys() else ''
-    return render_template('tnb_declaration_pdf.html', terrain=terrain, decl=decl, annee=annee,
+    return render_template('tnb/tnb_declaration_pdf.html', terrain=terrain, decl=decl, annee=annee,
                            commune=commune['nom'] if commune else '', province=prov)
 
 
@@ -441,7 +441,7 @@ def tnb_avis_non_paiement(id):
     commune = commune_row['nom'] if commune_row else ''
     province = commune_row['province'] if commune_row and 'province' in commune_row.keys() else ''
 
-    return render_template('tnb_avis_non_paiement.html',
+    return render_template('tnb/tnb_avis_non_paiement.html',
         terrain=terrain, annees_detail=annees_detail, total_montant=round(total_montant, 2),
         commune=commune, province=province, today=today_str,
         avis_num=avis_num, date_limite=f"{date.today().year}-03-31")
@@ -516,6 +516,6 @@ def tnb_avis_multiple():
             'avis_num': f"{n_avis}/{date.today().year}"
         })
     conn.close()
-    return render_template('tnb_avis_lot.html', avis_list=avis_list, commune=commune,
+    return render_template('tnb/tnb_avis_lot.html', avis_list=avis_list, commune=commune,
                            province=province, today=today_str, date_limite=f"{date.today().year}-03-31")
 

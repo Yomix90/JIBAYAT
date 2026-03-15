@@ -17,7 +17,7 @@ def odp_liste():
     contribuables = conn.execute('SELECT id,numero,nom,prenom,raison_sociale FROM contribuables WHERE actif=1').fetchall()
     tarifs = get_tarifs_module('OCCUPATION_DOMAINE')
     conn.close()
-    return render_template('odp_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs)
+    return render_template('odp/odp_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs)
 
 @bp.route('/occupation-domaine/ajouter', methods=['POST'])
 @login_required
@@ -67,7 +67,7 @@ def odp_paiement(id):
     annees_man = annees_non_payees('OCCUPATION_DOMAINE', id, 2022)
     params_m = conn.execute("SELECT * FROM parametres_calcul WHERE module='OCCUPATION_DOMAINE' ORDER BY code").fetchall()
     conn.close()
-    return render_template('paiement_module.html', user=user, objet=occ, module='OCCUPATION_DOMAINE',
+    return render_template('paiements/paiement_module.html', user=user, objet=occ, module='OCCUPATION_DOMAINE',
         module_label='Occupation Domaine Public', ref_id=id,
         declarations=declarations, annees_manquantes=annees_man,
         tarifs=tarifs, params=params_m, today=date.today().isoformat())

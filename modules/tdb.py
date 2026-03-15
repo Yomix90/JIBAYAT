@@ -22,7 +22,7 @@ def tdb_liste():
     contribuables = conn.execute('SELECT id,numero,nom,prenom,raison_sociale FROM contribuables WHERE actif=1').fetchall()
     tarifs = get_tarifs_module('DEBITS_BOISSONS')
     conn.close()
-    return render_template('tdb_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs, q=q)
+    return render_template('tdb/tdb_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs, q=q)
 
 @bp.route('/debits-boissons/ajouter', methods=['POST'])
 @login_required
@@ -54,7 +54,7 @@ def tdb_detail(id):
     tarifs = get_tarifs_module('DEBITS_BOISSONS')
     annees_man = annees_non_payees('DEBITS_BOISSONS', id, 2022)
     conn.close()
-    return render_template('tdb_detail.html', user=user, etab=etab, declarations=declarations,
+    return render_template('tdb/tdb_detail.html', user=user, etab=etab, declarations=declarations,
         tarifs=tarifs, annees_manquantes=annees_man, today=date.today().isoformat())
 
 @bp.route('/debits-boissons/<int:id>/modifier', methods=['POST'])
@@ -84,7 +84,7 @@ def tdb_paiement(id):
     annees_man = annees_non_payees('DEBITS_BOISSONS', id, 2022)
     params_m = conn.execute("SELECT * FROM parametres_calcul WHERE module='DEBITS_BOISSONS' ORDER BY code").fetchall()
     conn.close()
-    return render_template('paiement_module.html', user=user, objet=etab, module='DEBITS_BOISSONS',
+    return render_template('paiements/paiement_module.html', user=user, objet=etab, module='DEBITS_BOISSONS',
         module_label='Taxe Débits de Boissons', ref_id=id,
         declarations=declarations, annees_manquantes=annees_man,
         tarifs=tarifs, params=params_m, today=date.today().isoformat())

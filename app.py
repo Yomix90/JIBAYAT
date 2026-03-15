@@ -151,7 +151,7 @@ def paiements():
         AND d.id NOT IN (SELECT declaration_id FROM bulletins WHERE statut IN ("en_attente","paye"))
         ORDER BY d.date_creation DESC''').fetchall()
     conn.close()
-    return render_template('paiements.html', user=user, items=items,
+    return render_template('paiements/paiements.html', user=user, items=items,
                            decls=decls_sans_bulletin, today=date.today().isoformat())
 
 @app.route('/bulletins/creer', methods=['POST'])
@@ -272,7 +272,7 @@ def avis():
         WHERE d.statut="emis" AND d.montant_total>0
         AND d.id NOT IN (SELECT declaration_id FROM avis_non_paiement WHERE statut="emis")''').fetchall()
     conn.close()
-    return render_template('avis.html', user=user, items=items, decls=decls)
+    return render_template('admin/avis.html', user=user, items=items, decls=decls)
 
 @app.route('/avis/generer', methods=['POST'])
 @login_required
@@ -315,7 +315,7 @@ def utilisateurs():
     roles = conn.execute('SELECT * FROM roles').fetchall()
     communes = conn.execute('SELECT * FROM communes WHERE actif=1').fetchall()
     conn.close()
-    return render_template('utilisateurs.html', user=user, items=items, roles=roles, communes=communes)
+    return render_template('admin/utilisateurs.html', user=user, items=items, roles=roles, communes=communes)
 
 @app.route('/utilisateurs/ajouter', methods=['POST'])
 @login_required
@@ -360,7 +360,7 @@ def communes():
     conn = get_db()
     items = conn.execute('SELECT * FROM communes WHERE actif=1').fetchall()
     conn.close()
-    return render_template('communes.html', user=user, items=items)
+    return render_template('admin/communes.html', user=user, items=items)
 
 @app.route('/communes/ajouter', methods=['POST'])
 @login_required

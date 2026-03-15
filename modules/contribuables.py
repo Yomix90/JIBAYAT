@@ -21,7 +21,7 @@ def contribuables():
     items = conn.execute(sql + ' ORDER BY c.date_creation DESC', params).fetchall()
     communes = conn.execute('SELECT * FROM communes WHERE actif=1').fetchall()
     conn.close()
-    return render_template('contribuables.html', user=user, items=items, communes=communes, q=q)
+    return render_template('contribuables/contribuables.html', user=user, items=items, communes=communes, q=q)
 
 @bp.route('/contribuables/ajouter', methods=['GET', 'POST'])
 @login_required
@@ -46,7 +46,7 @@ def ajouter_contribuable():
         flash('Contribuable ajouté ✅', 'success')
         return redirect(url_for('contribuables.contribuables'))
     conn.close()
-    return render_template('ajouter_contribuable.html', user=user, communes=communes)
+    return render_template('contribuables/ajouter_contribuable.html', user=user, communes=communes)
 
 @bp.route('/contribuables/<int:id>/modifier', methods=['GET', 'POST'])
 @login_required
@@ -68,7 +68,7 @@ def modifier_contribuable(id):
         flash('Contribuable modifié ✅', 'success')
         return redirect(url_for('contribuables.contribuables'))
     conn.close()
-    return render_template('modifier_contribuable.html', user=user, contrib=contrib, communes=communes)
+    return render_template('contribuables/modifier_contribuable.html', user=user, contrib=contrib, communes=communes)
 
 @bp.route('/contribuables/<int:id>/supprimer', methods=['POST'])
 @login_required

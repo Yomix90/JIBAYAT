@@ -22,7 +22,7 @@ def sta_liste():
     contribuables = conn.execute('SELECT id,numero,nom,prenom,raison_sociale FROM contribuables WHERE actif=1').fetchall()
     tarifs = get_tarifs_module('STATIONNEMENT')
     conn.close()
-    return render_template('sta_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs, q=q)
+    return render_template('stationnement/sta_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs, q=q)
 
 @bp.route('/stationnement/ajouter', methods=['POST'])
 @login_required
@@ -53,7 +53,7 @@ def sta_detail(id):
     annees_man = annees_non_payees('STATIONNEMENT', id, 2020)
     tarifs = get_tarifs_module('STATIONNEMENT')
     conn.close()
-    return render_template('sta_detail.html', user=user, vehicule=veh, declarations=declarations,
+    return render_template('stationnement/sta_detail.html', user=user, vehicule=veh, declarations=declarations,
         annees_manquantes=annees_man, tarifs=tarifs, today=date.today().isoformat())
 
 @bp.route('/stationnement/<int:id>/modifier', methods=['POST'])
@@ -83,7 +83,7 @@ def sta_paiement(id):
     tarifs = get_tarifs_module('STATIONNEMENT')
     params_m = conn.execute("SELECT * FROM parametres_calcul WHERE module='STATIONNEMENT' ORDER BY code").fetchall()
     conn.close()
-    return render_template('paiement_module.html', user=user, objet=veh, module='STATIONNEMENT',
+    return render_template('paiements/paiement_module.html', user=user, objet=veh, module='STATIONNEMENT',
         module_label='Droit de Stationnement TPV', ref_id=id,
         declarations=declarations, annees_manquantes=annees_man,
         tarifs=tarifs, params=params_m, today=date.today().isoformat())

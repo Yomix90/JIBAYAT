@@ -40,7 +40,7 @@ def rubriques():
     conn = get_db()
     items = conn.execute('SELECT * FROM rubriques ORDER BY module').fetchall()
     conn.close()
-    return render_template('rubriques.html', user=user, items=items)
+    return render_template('admin/rubriques.html', user=user, items=items)
 
 @bp.route('/rubriques/ajouter', methods=['POST'])
 @login_required
@@ -86,7 +86,7 @@ def arretes_fiscaux():
     arretes = conn.execute('SELECT * FROM arretes_fiscaux ORDER BY date_effet DESC').fetchall()
     rubriques_list = conn.execute('SELECT * FROM rubriques WHERE actif=1 ORDER BY module').fetchall()
     conn.close()
-    return render_template('arretes.html', user=user, arretes=arretes,
+    return render_template('admin/arretes.html', user=user, arretes=arretes,
                            rubriques=rubriques_list, today=date.today().isoformat())
 
 @bp.route('/arretes-fiscaux/creer', methods=['POST'])
@@ -131,7 +131,7 @@ def arretes_detail(id):
         JOIN arretes_fiscaux af ON t.arrete_id=af.id
         WHERE t.arrete_id != ? ORDER BY r.module, t.date_debut DESC''', (id,)).fetchall()
     conn.close()
-    return render_template('arretes_detail.html', user=user, arrete=arrete,
+    return render_template('admin/arretes_detail.html', user=user, arrete=arrete,
                            tarifs=tarifs_list, rubriques=rubriques_list,
                            historique=historique, today=date.today().isoformat())
 
@@ -211,7 +211,7 @@ def parametres():
             grouped[m] = []
         grouped[m].append(p)
     conn.close()
-    return render_template('parametres.html', user=user, grouped=grouped)
+    return render_template('admin/parametres.html', user=user, grouped=grouped)
 
 @bp.route('/parametres/modifier', methods=['POST'])
 @login_required

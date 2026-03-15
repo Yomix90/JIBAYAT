@@ -16,7 +16,7 @@ def sou_liste():
         ORDER BY a.date_creation DESC''').fetchall()
     contribuables = conn.execute('SELECT id,numero,nom,prenom,raison_sociale FROM contribuables WHERE actif=1').fetchall()
     conn.close()
-    return render_template('sou_liste.html', user=user, items=items, contribuables=contribuables)
+    return render_template('souks/sou_liste.html', user=user, items=items, contribuables=contribuables)
 
 @bp.route('/souks/ajouter', methods=['POST'])
 @login_required
@@ -65,7 +65,7 @@ def sou_paiement(id):
     annees_man = annees_non_payees('AFFERMAGE_SOUKS', id, 2022)
     params_m = conn.execute("SELECT * FROM parametres_calcul WHERE module='AFFERMAGE_SOUKS' ORDER BY code").fetchall()
     conn.close()
-    return render_template('paiement_module.html', user=user, objet=aff, module='AFFERMAGE_SOUKS',
+    return render_template('paiements/paiement_module.html', user=user, objet=aff, module='AFFERMAGE_SOUKS',
         module_label='Affermage Souks Communaux', ref_id=id,
         declarations=declarations, annees_manquantes=annees_man,
         tarifs=[], params=params_m, today=date.today().isoformat())

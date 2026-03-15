@@ -16,7 +16,7 @@ def loc_liste():
         ORDER BY b.date_creation DESC''').fetchall()
     contribuables = conn.execute('SELECT id,numero,nom,prenom,raison_sociale FROM contribuables WHERE actif=1').fetchall()
     conn.close()
-    return render_template('loc_liste.html', user=user, items=items, contribuables=contribuables)
+    return render_template('location/loc_liste.html', user=user, items=items, contribuables=contribuables)
 
 @bp.route('/location-locaux/ajouter', methods=['POST'])
 @login_required
@@ -66,7 +66,7 @@ def loc_paiement(id):
     annees_man = annees_non_payees('LOCATION_LOCAUX', id, 2022)
     params_m = conn.execute("SELECT * FROM parametres_calcul WHERE module='LOCATION_LOCAUX' ORDER BY code").fetchall()
     conn.close()
-    return render_template('paiement_module.html', user=user, objet=bail, module='LOCATION_LOCAUX',
+    return render_template('paiements/paiement_module.html', user=user, objet=bail, module='LOCATION_LOCAUX',
         module_label='Location Locaux Commerciaux', ref_id=id,
         declarations=declarations, annees_manquantes=annees_man,
         tarifs=[], params=params_m, today=date.today().isoformat())

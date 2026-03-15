@@ -22,7 +22,7 @@ def fou_liste():
     contribuables = conn.execute('SELECT id,numero,nom,prenom,raison_sociale FROM contribuables WHERE actif=1').fetchall()
     tarifs = get_tarifs_module('FOURRIERE')
     conn.close()
-    return render_template('fou_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs, q=q)
+    return render_template('fourriere/fou_liste.html', user=user, items=items, contribuables=contribuables, tarifs=tarifs, q=q)
 
 @bp.route('/fourriere/ajouter', methods=['POST'])
 @login_required
@@ -51,7 +51,7 @@ def fou_detail(id):
         FROM declarations d LEFT JOIN bulletins b ON b.declaration_id=d.id
         WHERE d.module="FOURRIERE" AND d.reference_id=? ORDER BY d.date_creation DESC''', (id,)).fetchall()
     conn.close()
-    return render_template('fou_detail.html', user=user, dossier=dossier, declarations=declarations,
+    return render_template('fourriere/fou_detail.html', user=user, dossier=dossier, declarations=declarations,
         today=date.today().isoformat())
 
 @bp.route('/fourriere/<int:id>/paiement')
@@ -67,7 +67,7 @@ def fou_paiement(id):
     tarifs = get_tarifs_module('FOURRIERE')
     params_m = conn.execute("SELECT * FROM parametres_calcul WHERE module='FOURRIERE' ORDER BY code").fetchall()
     conn.close()
-    return render_template('paiement_module.html', user=user, objet=dossier, module='FOURRIERE',
+    return render_template('paiements/paiement_module.html', user=user, objet=dossier, module='FOURRIERE',
         module_label='Droits de Fourrière', ref_id=id,
         declarations=declarations, annees_manquantes=[],
         tarifs=tarifs, params=params_m, today=date.today().isoformat())
