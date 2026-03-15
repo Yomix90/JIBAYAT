@@ -2,31 +2,243 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>إقرار بامتلاك أرض حضرية غير مبنية لسنة {{ annee }}</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Tajawal:wght@500;700;800&display=swap" rel="stylesheet">
+<title>إقرار بامتلاك أرض حضرية غير مبنية — سنة {{ annee }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4; margin: 15mm; }
-  body { font-family: 'Tajawal', 'Cairo', sans-serif; font-size: 13pt; color: #000; direction: rtl; line-height: 1.6; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
-  .box-left { width: 32%; border: 2px solid #000; padding: 15px; min-height: 130px; font-size: 11pt; border-radius: 4px; box-shadow: 2px 2px 0 #000; }
-  .box-middle { width: 34%; text-align: center; font-weight: 800; font-size: 18pt; line-height: 1.4; }
-  .box-right { width: 32%; font-size: 12pt; text-align: center; font-weight: 700; }
-  .box-right div { margin-bottom: 4px; }
-  .title { text-align: center; font-size: 22pt; font-weight: 800; margin-bottom: 30px; border-bottom: 2px solid #000; display: inline-block; padding-bottom: 5px; }
-  .title-container { text-align: center; width: 100%; margin-bottom: 40px; }
-  .content-row { margin-bottom: 15px; display: flex; align-items: flex-end; }
-  .label { white-space: nowrap; margin-left: 10px; font-weight: 700; }
-  .dotted { flex-grow: 1; border-bottom: 2px dotted #000; height: 1em; text-align: center; font-family: monospace; font-size: 14pt; }
-  .checkboxes { display: flex; gap: 40px; margin-right: 20px; font-weight: 700; }
-  .checkbox { margin-left: 5px; }
-  .footer { margin-top: 50px; text-align: center; font-size: 13pt; }
-  .signature-box { display: flex; justify-content: space-around; margin-top: 30px; }
-  .footnote { position: fixed; bottom: -5px; left: 0; right: 0; font-size: 10pt; text-align: right; border-top: 1px solid #000; padding-top: 5px; }
-  /* Print hide button */
+  @page { size: A4 portrait; margin: 12mm 14mm 18mm 14mm; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Cairo', sans-serif;
+    font-size: 11.5pt;
+    color: #111;
+    direction: rtl;
+    line-height: 1.65;
+    background: #fff;
+  }
+
+  /* ── Barre d'impression ── */
+  .no-print {
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .btn-print {
+    background: linear-gradient(135deg, #1e3a5f, #2a5298);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 28px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(30,58,95,.3);
+    transition: transform .15s;
+  }
+  .btn-print:hover { transform: translateY(-1px); }
   @media print { .no-print { display: none; } }
+
+  /* ── En-tête trois colonnes ── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 3px double #1e3a5f;
+    padding-bottom: 14px;
+  }
+
+  .box-kingdom {
+    width: 32%;
+    text-align: center;
+    font-size: 11pt;
+    font-weight: 700;
+    line-height: 1.8;
+    color: #1e3a5f;
+  }
+  .box-kingdom .divider {
+    border: none;
+    border-top: 1px solid #c8a84b;
+    margin: 6px auto;
+    width: 60%;
+  }
+
+  .box-center {
+    width: 36%;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .box-center .title-ar {
+    font-size: 16pt;
+    font-weight: 900;
+    color: #1e3a5f;
+    line-height: 1.4;
+    letter-spacing: .5px;
+  }
+  .box-center .subtitle-ar {
+    font-size: 10.5pt;
+    color: #555;
+    margin-top: 4px;
+  }
+
+  .box-office {
+    width: 30%;
+    border: 1.5px solid #1e3a5f;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 10pt;
+    line-height: 2;
+    background: #f8f9fc;
+  }
+  .box-office .row-lbl { color: #555; font-size: 9.5pt; }
+  .box-office .row-val { font-weight: 700; border-bottom: 1px dotted #aaa; display: inline-block; min-width: 100px; }
+
+  /* ── Titre Déclaration ── */
+  .decl-title {
+    text-align: center;
+    margin: 16px 0 20px;
+    padding: 12px 0;
+    border-top: 2px solid #1e3a5f;
+    border-bottom: 2px solid #1e3a5f;
+    background: linear-gradient(to bottom, #f0f4ff, #fff);
+  }
+  .decl-title h1 {
+    font-size: 22pt;
+    font-weight: 900;
+    color: #1e3a5f;
+    letter-spacing: 2px;
+  }
+  .decl-title p {
+    font-size: 12.5pt;
+    font-weight: 600;
+    color: #333;
+    margin-top: 4px;
+  }
+  .year-badge {
+    display: inline-block;
+    border-bottom: 2.5px solid #c8a84b;
+    padding: 0 20px;
+    color: #c8a84b;
+    font-weight: 900;
+  }
+
+  /* ── Sections de contenu ── */
+  .section {
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #fff;
+    background: #1e3a5f;
+    padding: 4px 12px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    letter-spacing: .3px;
+  }
+
+  .field-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .field-label {
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 10.5pt;
+    color: #222;
+    flex-shrink: 0;
+  }
+  .field-line {
+    flex-grow: 1;
+    border-bottom: 1.5px solid #333;
+    min-height: 1.4em;
+    padding-bottom: 1px;
+    font-size: 11pt;
+    font-weight: 700;
+    text-align: center;
+    color: #1e3a5f;
+  }
+  .field-line.short { flex-grow: 0; min-width: 130px; }
+
+  /* ── Cases à cocher ── */
+  .checkboxes-row {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 6px 0 4px;
+  }
+  .chk-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11pt;
+    font-weight: 700;
+  }
+  .chk-box {
+    width: 18px; height: 18px;
+    border: 2px solid #1e3a5f;
+    border-radius: 3px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12pt; font-weight: 900; color: #1e3a5f;
+    flex-shrink: 0;
+  }
+  .hint { font-size: 9.5pt; color: #888; margin-bottom: 10px; }
+
+  /* ── Footer signature ── */
+  .footer {
+    margin-top: 28px;
+    padding-top: 14px;
+    border-top: 1.5px dashed #999;
+  }
+  .footer-text {
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 18px;
+  }
+  .signature-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 20px;
+    margin-top: 10px;
+  }
+  .sig-box {
+    flex: 1;
+    border: 1px dashed #aaa;
+    border-radius: 6px;
+    padding: 12px 10px;
+    min-height: 70px;
+    font-size: 10pt;
+    color: #555;
+    text-align: center;
+  }
+  .sig-box strong { display: block; font-size: 10.5pt; color: #1e3a5f; margin-bottom: 4px; }
+
+  /* ── Note de bas de page ── */
+  .footnote {
+    position: fixed;
+    bottom: 4mm;
+    left: 14mm; right: 14mm;
+    font-size: 8.5pt;
+    color: #555;
+    border-top: 1px solid #ccc;
+    padding-top: 4px;
+    text-align: right;
+    font-style: italic;
+  }
+
+  /* ── Lignes vides pour remplissage manuel ── */
+  .blank-lines { margin-top: 10px; }
+  .blank-line { border-bottom: 1px solid #bbb; height: 26px; margin-bottom: 8px; }
 </style>
 </head>
-<body class="print-mode">
+<body>
 
 <script>
   window.onload = function() {
@@ -36,99 +248,152 @@
   };
 </script>
 
-<div class="no-print" style="margin-bottom:20px; text-align:center;">
-    <button onclick="window.print()" style="padding:10px 20px; font-size:16px; cursor:pointer;">🖨️ Imprimer la déclaration (PDF)</button>
+<!-- Bouton imprimer -->
+<div class="no-print">
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
 </div>
 
+<!-- ══════════ EN-TÊTE ══════════ -->
 <div class="header">
-  <div class="box-right">
-    <div>المملكة المغربية</div>
+
+  <!-- Droite : Hiérarchie administrative -->
+  <div class="box-kingdom">
+    <div style="font-size:13pt;font-weight:900">المملكة المغربية</div>
+    <hr class="divider">
     <div>وزارة الداخلية</div>
-    <div>جهة ...........................</div>
-    <div>عمالة/إقليم ...........................</div>
-    <div>جماعة <strong>{{ commune }}</strong></div>
+    <div style="font-size:10pt;color:#444">جهة ..............................</div>
+    <div style="font-size:10pt;color:#444">عمالة/إقليم ........................</div>
+    <div style="margin-top:4px">جماعة <strong style="color:#c8a84b">{{ commune }}</strong></div>
   </div>
-  
-  <div class="box-middle">
-    <br>الرسم على الأراضي<br>الحضرية غير المبنية
-  </div>
-  
-  <div class="box-left">
-    <div>يتم من طرف مصلحة الوعاء الجماعية</div><br>
-    <div>رقم الإقرار : <strong>{{ decl.numero if decl else '..................' }}</strong></div><br>
-    <div>سلم ب : ...........................</div><br>
-    <div>عن الآمر بالصرف.</div><br>
-    <div style="text-align:center">التوقيع:</div>
-  </div>
-</div>
 
-<div class="title-container">
-  <div class="title">إقـــــــــــــــــــــــــــــرار</div><br>
-  <strong style="font-size: 16pt;">بامتـــــــلاك أرض حضريــــة غيـــــر مبنيـــــة لسنة <span style="border-bottom:2px dotted #000; padding:0 30px;">{{ annee }}</span> (*)</strong>
-</div>
-
-<div class="content">
-  <div class="content-row">
-    <div class="label">- الإسم الشخصي والعائلي أو الإسم التجاري :</div>
-    <div class="dotted"><strong>{{ terrain.prenom }} {{ terrain.nom }} {{ terrain.raison_sociale }}</strong></div>
-  </div>
-  <div class="content-row">
-    <div class="label">- عنوان السكنى الاعتيادية أو المؤسسة الرئيسية :</div>
-    <div class="dotted">{{ terrain.ctb_adresse }}</div>
-  </div>
-  <div class="content-row">
-    <div class="label">- رقم بطاقة التعريف الوطنية أو رقم الإقامة بالنسبة للأجانب :</div>
-    <div class="dotted">{{ terrain.cin }}</div>
-  </div>
-  <div class="content-row">
-    <div class="label">- رقم الهاتف:</div>
-    <div class="dotted" style="flex-grow:0; width:150px;">{{ terrain.telephone }}</div>
-    <div class="label">البريد الإلكتروني :</div>
-    <div class="dotted">{{ terrain.email }}</div>
-  </div>
-  
-  <div class="content-row" style="margin-top:25px;">
-    <div class="label" style="width:200px">- صفة صاحب الإقرار:</div>
-    <div class="checkboxes">
-      <label>مالك ( ✓ )</label>
-      <label>مستغل ( &nbsp;&nbsp;&nbsp; )</label>
-      <label>حائز ( &nbsp;&nbsp;&nbsp; )</label>
+  <!-- Centre : Intitulé taxe -->
+  <div class="box-center">
+    <div class="title-ar">الرسم على الأراضي<br>الحضرية غير المبنية</div>
+    <div class="subtitle-ar">Taxe sur les Terrains Urbains Non Bâtis</div>
+    <div style="margin-top:10px;background:#1e3a5f;color:#c8a84b;border-radius:20px;padding:4px 18px;font-size:10pt;font-weight:700">
+      سنة {{ annee }}
     </div>
   </div>
-  <div style="font-size:11pt; text-align:center; display:block; margin-top:-10px; margin-bottom:25px; color:#555">ضع علامة في الخانة المناسبة</div>
 
-  <div class="content-row">
-    <div class="label">- موقع العقار:</div>
-    <div class="dotted">{{ terrain.adresse }} {% if terrain.adresse_ar %} - {{ terrain.adresse_ar }}{% endif %}</div>
-    <div class="label">رقم الرسم العقاري:</div>
-    <div class="dotted" style="flex-grow:0; width:150px;">{{ terrain.titre_foncier }}</div>
+  <!-- Gauche : Cadre réservé à la régie -->
+  <div class="box-office">
+    <div style="font-weight:800;font-size:10.5pt;color:#1e3a5f;margin-bottom:6px;border-bottom:1px solid #1e3a5f;padding-bottom:4px">
+      يُخصَّص للمصلحة
+    </div>
+    <div class="row-lbl">رقم الإقرار</div>
+    <div class="row-val">{{ decl.numero if decl else '' }}</div>
+    <div class="row-lbl" style="margin-top:6px">سُلِّم بتاريخ</div>
+    <div class="row-val"></div>
+    <div class="row-lbl" style="margin-top:6px">توقيع المسؤول</div>
+    <div style="height:28px;border-bottom:1px dotted #aaa"></div>
   </div>
-  <div class="content-row" style="margin-top:25px;">
-    <div class="label">- المساحة (بالمتر المربع) :</div>
-    <div class="dotted"><strong>{{ "%.2f"|format(terrain.superficie) }} م²</strong></div>
-  </div>
-  <div class="content-row" style="margin-top:25px;">
-    <div class="label">- الحصة في الملكية المشاعة :</div>
-    <div class="dotted">100%</div>
-  </div>
-  
-  <div class="content-row" style="margin-top:20px;"><div class="dotted"></div></div>
-  <div class="content-row" style="margin-top:20px;"><div class="dotted"></div></div>
-  <div class="content-row" style="margin-top:20px;"><div class="dotted"></div></div>
-  <div class="content-row" style="margin-top:20px;"><div class="dotted"></div></div>
+
 </div>
 
+<!-- ══════════ TITRE IKRAR ══════════ -->
+<div class="decl-title">
+  <h1>إقـــرار</h1>
+  <p>بامتلاك أرض حضرية غير مبنية لسنة <span class="year-badge">{{ annee }}</span> &nbsp;(*)</p>
+</div>
+
+<!-- ══════════ SECTION 1 : Identité ══════════ -->
+<div class="section">
+  <div class="section-title">أولاً — هوية المصرح &nbsp;|&nbsp; Identité du Déclarant</div>
+
+  <div class="field-row">
+    <div class="field-label">الإسم الشخصي والعائلي أو الإسم التجاري :</div>
+    <div class="field-line">{{ terrain.prenom or '' }} {{ terrain.nom or '' }}{% if terrain.raison_sociale %} / {{ terrain.raison_sociale }}{% endif %}</div>
+  </div>
+
+  <div class="field-row">
+    <div class="field-label">عنوان السكنى الاعتيادية أو المقر الرئيسي :</div>
+    <div class="field-line">{{ terrain.ctb_adresse or '' }}</div>
+  </div>
+
+  <div class="field-row">
+    <div class="field-label">رقم بطاقة التعريف الوطنية / رقم الإقامة :</div>
+    <div class="field-line">{{ terrain.cin or '' }}</div>
+  </div>
+
+  <div class="field-row">
+    <div class="field-label">رقم الهاتف :</div>
+    <div class="field-line short">{{ terrain.telephone or '' }}</div>
+    <div class="field-label" style="margin-right:20px">البريد الإلكتروني :</div>
+    <div class="field-line">{{ terrain.email or '' }}</div>
+  </div>
+
+  <div style="margin-top:10px">
+    <div class="field-label" style="margin-bottom:6px">صفة صاحب الإقرار :</div>
+    <div class="checkboxes-row">
+      <div class="chk-item">
+        <div class="chk-box">✓</div> <span>مالك</span>
+      </div>
+      <div class="chk-item">
+        <div class="chk-box">&nbsp;</div> <span>مستغل</span>
+      </div>
+      <div class="chk-item">
+        <div class="chk-box">&nbsp;</div> <span>حائز</span>
+      </div>
+    </div>
+    <div class="hint">ضع علامة (✓) في الخانة المناسبة</div>
+  </div>
+</div>
+
+<!-- ══════════ SECTION 2 : Propriété ══════════ -->
+<div class="section">
+  <div class="section-title">ثانياً — بيانات العقار &nbsp;|&nbsp; Données du Terrain</div>
+
+  <div class="field-row">
+    <div class="field-label">موقع العقار :</div>
+    <div class="field-line">{{ terrain.adresse or '' }}{% if terrain.adresse_ar %} — {{ terrain.adresse_ar }}{% endif %}</div>
+    <div class="field-label" style="margin-right:16px">رقم الرسم العقاري :</div>
+    <div class="field-line short">{{ terrain.titre_foncier or '' }}</div>
+  </div>
+
+  <div class="field-row">
+    <div class="field-label">المساحة الإجمالية (م²) :</div>
+    <div class="field-line short" style="font-size:13pt">{{ "%.2f"|format(terrain.superficie or 0) }} م²</div>
+    <div class="field-label" style="margin-right:20px">الحصة في الملكية المشاعة :</div>
+    <div class="field-line short">100 %</div>
+  </div>
+
+  <div class="field-row">
+    <div class="field-label">المنطقة الضريبية :</div>
+    <div class="field-line short">{{ terrain.zone or '' }}</div>
+    <div class="field-label" style="margin-right:20px">تاريخ الاقتناء :</div>
+    <div class="field-line short">{{ terrain.date_acquisition or '...........' }}</div>
+  </div>
+</div>
+
+<!-- ══════════ Lignes supplémentaires ══════════ -->
+<div class="blank-lines">
+  <div class="blank-line"></div>
+  <div class="blank-line"></div>
+  <div class="blank-line"></div>
+</div>
+
+<!-- ══════════ FOOTER ══════════ -->
 <div class="footer">
-  <div style="font-weight:bold; margin-bottom:20px;">أنا الموقع أسفله أشهد بصحة البيانات الواردة بهذا الإقرار.</div>
-  
-  <div class="signature-box">
-    <div>في ........................................ بتاريخ: <strong>{{ decl.date_declaration if decl else '...........................' }}</strong></div>
+  <div class="footer-text">أنا الموقع أسفله أُقِرُّ بصحة البيانات الواردة في هذا الإقرار وأتحمل المسؤولية القانونية عن أي معلومات مغلوطة.</div>
+  <div class="signature-grid">
+    <div class="sig-box">
+      <strong>مكان وتاريخ التوقيع</strong>
+      في ..............  بتاريخ : {{ decl.date_declaration if decl else '............' }}
+    </div>
+    <div class="sig-box" style="min-width:180px">
+      <strong>إمضاء المصرح</strong>
+      <div style="height:40px"></div>
+    </div>
+    <div class="sig-box" style="min-width:180px">
+      <strong>خاتم المؤسسة (إن وُجِد)</strong>
+      <div style="height:40px"></div>
+    </div>
   </div>
-  <div style="font-weight:bold; margin-top:30px; margin-right:30%">إمضاء المصرح</div>
 </div>
 
+<!-- ══════════ NOTE DE BAS DE PAGE ══════════ -->
 <div class="footnote">
-  (*) المادة 47 من القانون رقم 47.06 المتعلق بجبايات الجماعات الترابية.
+  (*) وفقاً للمادة 47 من القانون رقم 47.06 المتعلق بجبايات الجماعات الترابية — يجب تقديم هذا الإقرار قبل 28 فبراير من كل سنة.
 </div>
 
 </body>
