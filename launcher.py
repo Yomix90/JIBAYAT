@@ -446,10 +446,11 @@ class ModernLauncher(tk.Tk):
                                    text="⚠️  Une mise à jour est disponible !",
                                    font=("Segoe UI", 10, "bold"), bg="#78350f", fg="#fef3c7")
         self.lbl_update.pack(side=tk.LEFT, padx=15)
-        tk.Button(self.frm_update, text="Mettre à jour maintenant →",
-                  bg="#d97706", fg="white", relief="flat", font=FONT_BOLD,
-                  padx=10, pady=4, cursor="hand2",
-                  command=self._do_git_pull).pack(side=tk.RIGHT, padx=15)
+        tk.Button(self.frm_update, text="Mettre à jour maintenant →",
+                  bg="#d97706", fg="white", relief="flat", font=FONT_BOLD,
+                  padx=10, pady=4, cursor="hand2",
+                  command=self._check_updates_manual).pack(side=tk.RIGHT, padx=15)
+
 
         # ── Corps principal (Onglets) ──
         self.notebook = ttk.Notebook(self)
