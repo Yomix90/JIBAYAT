@@ -771,64 +771,142 @@ class ModernLauncher(tk.Tk):
         self._stop_server()
         self.destroy()
 
-    # ── Mises à jour ─────────────────────────────
-    def _bg_fetch(self) -> None:
-        """Vérification silencieuse des mises à jour au démarrage."""
+    # ── Mises à jour via GitHub API ──────────────────────────────
+    GITHUB_USER = "Yomix90"
+    GITHUB_REPO = "JIBAYAT"
+    GITHUB_BRANCH = "main"
+
+    def _get_remote_version(self) -> tuple[str, str]:
+        """
+        Récupère la version distante depuis GitHub raw.
+        Retourne (version_str, download_url_zip) ou ("", "") en cas d'erreur.
+        """
         try:
-            subprocess.run(
-                ["git", "fetch"],
-                capture_output=True, timeout=8,
-                creationflags=_WIN_FLAG
+            raw_url = (
+                f"https://raw.githubusercontent.com/"
+                f"{self.GITHUB_USER}/{self.GITHUB_REPO}/{self.GITHUB_BRANCH}/version.txt"
             )
-            res = subprocess.run(
-                ["git", "status", "-uno"],
-                capture_output=True, text=True, timeout=5,
-                creationflags=_WIN_FLAG
-            )
-            if ("Your branch is behind" in res.stdout or
-                    "Votre branche est en retard" in res.stdout):
-                self.after(0, self._show_update_banner)
+            r = requests.get(raw_url, timeout=8)
+            if r.status_code == 200:
+                remote_ver = r.text.strip()
+                zip_url = (
+                    f"https://github.com/{self.GITHUB_USER}/{self.GITHUB_REPO}"
+                    f"/archive/refs/heads/{self.GITHUB_BRANCH}.zip"
+                )
+                return remote_ver, zip_url
+        except Exception:
+            pass
+        return "", ""
+
+    def _version_tuple(self, v: str) -> tuple[int, ...]:
+        try:
+            return tuple(int(x) for x in v.strip().split("."))
+        except Exception:
+            return (0,)
+
+    def _bg_fetch(self) -> None:
+        """Vérification silencieuse des mises à jour au démarrage (via GitHub API)."""
+        try:
+            local_ver = read_version()
+            remote_ver, _ = self._get_remote_version()
+            if remote_ver and self._version_tuple(remote_ver) > self._version_tuple(local_ver):
+                self.after(0, lambda: self._show_update_banner(remote_ver))
         except Exception:
             pass
 
-    def _show_update_banner(self) -> None:
+    def _show_update_banner(self, remote_ver: str = "") -> None:  # type: ignore[override]
         """Affiche le bandeau de mise à jour si pas encore visible."""
         if not self.frm_update.winfo_ismapped():
+            # Mettre à jour le texte du bandeau si on a la version
+            if remote_ver:
+                try:
+                    lbl = self.frm_update.winfo_children()[0]  # type: ignore[index]
+                    lbl.configure(text=f"🆕  Version {remote_ver} disponible ! Cliquez pour mettre à jour.")  # type: ignore[union-attr]
+                except Exception:
+                    pass
             self.frm_update.pack(fill=tk.X, side=tk.TOP)
 
     def _check_updates_manual(self) -> None:
+        """Vérification manuelle déclenchée par l'utilisateur."""
         try:
-            subprocess.run(["git", "fetch"], capture_output=True, timeout=10,
-                           creationflags=_WIN_FLAG)
-            res = subprocess.run(["git", "status", "-uno"],
-                                 capture_output=True, text=True, timeout=5,
-                                 creationflags=_WIN_FLAG)
-            behind = ("Your branch is behind" in res.stdout or
-                      "Votre branche est en retard" in res.stdout)
-            if behind:
-                if messagebox.askyesno("Mise à jour disponible",
-                                       "Une nouvelle version est disponible.\nMettre à jour maintenant ?"):
-                    self._do_git_pull()
+            local_ver = read_version()
+            remote_ver, zip_url = self._get_remote_version()
+            if not remote_ver:
+                messagebox.showerror("Erreur", "Impossible de vérifier les mises à jour.\nVérifiez votre connexion internet.")
+                return
+            if self._version_tuple(remote_ver) > self._version_tuple(local_ver):
+                msg = (
+                    f"🆕 Nouvelle version disponible : {remote_ver}\n"
+                    f"Version actuelle : {local_ver}\n\n"
+                    f"Voulez-vous mettre à jour maintenant ?"
+                )
+                if messagebox.askyesno("Mise à jour disponible", msg):
+                    self._do_update(remote_ver, zip_url)
             else:
-                messagebox.showinfo("✅ À jour", "JIBAYAT est déjà à jour !")
-        except FileNotFoundError:
-            messagebox.showerror("Git introuvable",
-                                 "Git n'est pas installé.\nTéléchargez-le sur https://git-scm.com")
+                messagebox.showinfo(
+                    "✅ À jour",
+                    f"JIBAYAT est à la dernière version ({local_ver})."
+                )
         except Exception as e:
             messagebox.showerror("Erreur", str(e))
 
-    def _do_git_pull(self) -> None:
+    def _do_update(self, remote_ver: str, zip_url: str) -> None:
+        """
+        Télécharge le ZIP depuis GitHub et extrait les fichiers .py / templates.
+        Fonctionne qu'il y ait git ou non sur le PC.
+        """
+        import zipfile, tempfile, shutil as _shutil
         try:
-            res = subprocess.run(["git", "pull"], capture_output=True, text=True, timeout=30,
-                                 creationflags=_WIN_FLAG)
-            if "Already up to date" in res.stdout or "Déjà à jour" in res.stdout:
-                messagebox.showinfo("✅", "Déjà à jour !")
-            else:
-                self.frm_update.pack_forget()
-                messagebox.showinfo("✅ Mise à jour réussie",
-                                    "Application mise à jour !\nRedémarrez le lanceur pour appliquer.")
+            prog_win = tk.Toplevel(self)
+            prog_win.title("Téléchargement...")
+            prog_win.geometry("380x120")
+            prog_win.configure(bg=COLORS["bg"])
+            prog_win.grab_set()
+            tk.Label(prog_win, text="⬇️  Téléchargement de la mise à jour...",
+                     font=FONT_BOLD, bg=COLORS["bg"], fg=COLORS["text"]).pack(pady=18)
+            bar = ttk.Progressbar(prog_win, mode="indeterminate", length=320)
+            bar.pack()
+            bar.start(12)
+            prog_win.update()
+
+            r = requests.get(zip_url, timeout=60, stream=True)
+            r.raise_for_status()
+
+            with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+                for chunk in r.iter_content(chunk_size=65536):
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+
+            bar.stop()
+            prog_win.destroy()
+
+            with zipfile.ZipFile(tmp_path, "r") as zf:
+                prefix = f"{self.GITHUB_REPO}-{self.GITHUB_BRANCH}/"
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                for entry in zf.infolist():
+                    rel = entry.filename
+                    if not rel.startswith(prefix):
+                        continue
+                    rel = rel[len(prefix):]
+                    if not rel:
+                        continue
+                    # Copier seulement les sources (pas la DB, pas config.json)
+                    if rel.endswith((".py", ".html", ".txt", ".css", ".js", ".md")):
+                        dest = os.path.join(base_dir, rel)
+                        os.makedirs(os.path.dirname(dest), exist_ok=True)
+                        with zf.open(entry) as src, open(dest, "wb") as dst:
+                            _shutil.copyfileobj(src, dst)
+
+            os.unlink(tmp_path)
+            messagebox.showinfo(
+                "✅ Mise à jour réussie",
+                f"JIBAYAT a été mis à jour vers la version {remote_ver} !\n"
+                "Redémarrez l'application pour appliquer les changements."
+            )
+            self.frm_update.pack_forget()
+
         except Exception as e:
-            messagebox.showerror("Erreur", str(e))
+            messagebox.showerror("Erreur mise à jour", str(e))
 
     # ── Rapport ──────────────────────────────────
     def _open_report(self) -> None:
